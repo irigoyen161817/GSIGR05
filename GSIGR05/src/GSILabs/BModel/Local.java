@@ -33,8 +33,8 @@ import java.util.Set;
  * del local) se construye encima de estas operaciones en otra issue; esta
  * clase no la implementa.</p>
  *
- * <p>Los tipos concretos ({@code Restaurante}, {@code Bar} y
- * {@code Pub}) heredan de {@code Local}.</p>
+ * <p>Los tipos concretos ({@link Restaurante}, {@link Bar} y
+ * {@link Pub}) heredan de {@code Local}.</p>
  */
 public abstract class Local {
 
