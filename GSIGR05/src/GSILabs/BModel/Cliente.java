@@ -6,8 +6,8 @@ import java.time.LocalDate;
  * Perfil de usuario que puede consultar locales y redactar reseñas.
  *
  * <p>Un {@code Cliente} puede publicar {@code Review reviews} sobre
- * {@code Local locales} y realizar reservas sobre los que sean
- * {@code Reservable} (C04). Esas operaciones se ofrecen desde
+ * {@link Local locales} y realizar reservas sobre los que sean
+ * {@link Reservable} (C04). Esas operaciones se ofrecen desde
  * {@code GSILabs.BSystem.BusinessSystem}, que coordina la creación de las
  * entidades relacionadas.</p>
  */
