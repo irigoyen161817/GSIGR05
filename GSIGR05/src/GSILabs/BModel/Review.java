@@ -23,6 +23,9 @@ import java.util.Objects;
  * <p>La fecha de visita no puede ser posterior a la fecha actual (C05,
  * C08): no se puede valorar una visita que todavía no ha ocurrido, ya
  * que debe ser anterior o igual a la fecha de creación de la review.</p>
+ *
+ * <p>Una review puede tener como máximo una {@link Contestación}, del
+ * dueño del local reseñado.</p>
  */
 public final class Review {
 
@@ -41,6 +44,7 @@ public final class Review {
     private final String comentario;
     private final LocalDate fechaVisita;
     private final LocalDate fechaCreacion;
+    private Contestación contestacion;
 
     /**
      * Crea una review. La fecha de creación se asigna automáticamente a
@@ -142,6 +146,42 @@ public final class Review {
      */
     public LocalDate getFechaCreacion() {
         return fechaCreacion;
+    }
+
+    /**
+     * Devuelve la contestación del dueño a esta review, si existe.
+     *
+     * @return la contestación, o {@code null} si aún no se ha respondido
+     * @see Contestación#vincular()
+     */
+    public Contestación getContestacion() {
+        return contestacion;
+    }
+
+    /**
+     * Asigna la contestación de esta review. Solo debe invocarse desde
+     * {@link Contestación#vincular()}, que es quien valida que no exista
+     * ya una contestación previa y que el autor sea dueño del local
+     * reseñado.
+     *
+     * @param contestacion contestación a asociar con esta review
+     */
+    void asignarContestacionInterna(Contestación contestacion) {
+        this.contestacion = contestacion;
+    }
+
+    /**
+     * Quita la contestación de esta review, si es {@code contestacion}.
+     * Solo debe invocarse desde {@link Contestación#desvincular()}.
+     *
+     * @param contestacion contestación a desasociar de esta review; si no
+     *                      coincide con la contestación actual, no se
+     *                      hace nada
+     */
+    void quitarContestacionInterna(Contestación contestacion) {
+        if (this.contestacion == contestacion) {
+            this.contestacion = null;
+        }
     }
 
     /**
