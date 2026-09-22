@@ -1,7 +1,10 @@
 package GSILabs.BModel;
 
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Reseña de un {@link Cliente} sobre un {@link Local}.
@@ -26,6 +29,20 @@ import java.util.Objects;
  *
  * <p>Una review puede tener como máximo una {@link Contestación}, del
  * dueño del local reseñado.</p>
+ *
+ * <p><b>Ciclo de vida.</b> Una review se crea sin estar enlazada con el
+ * cliente autor ni con el local valorado: el constructor solo valida los
+ * datos, sin tocar ninguna otra entidad (evita que {@code this} escape
+ * del constructor antes de terminar de construirse). Es responsabilidad
+ * de quien da de alta la review, típicamente
+ * {@code GSILabs.BSystem.BusinessSystem} tras comprobar que el local está
+ * dado de alta en el sistema y que el cliente no tiene ya una review de
+ * la misma visita, invocar {@link #vincular()} para reflejarla en
+ * {@link Cliente#getReviews()} y {@link Local#getReviews()}. Al dar de
+ * baja la review hay que invocar {@link #desvincular()} para deshacer ese
+ * enlace. La política de borrado configurable (bloquear la baja o
+ * propagarla en cascada a la contestación dependiente) se aplica con
+ * {@link #eliminar(PoliticaBorrado)}.</p>
  */
 public final class Review {
 
@@ -45,10 +62,16 @@ public final class Review {
     private final LocalDate fechaVisita;
     private final LocalDate fechaCreacion;
     private Contestación contestacion;
+    private boolean vinculada;
 
     /**
-     * Crea una review. La fecha de creación se asigna automáticamente a
-     * la fecha actual.
+     * Crea una review, sin enlazarla todavía con el cliente ni con el
+     * local. La fecha de creación se asigna automáticamente a la fecha
+     * actual.
+     *
+     * <p>El constructor solo valida los datos; no modifica el cliente ni
+     * el local. Para reflejar la review en ellos hay que invocar
+     * {@link #vincular()} una vez dada de alta en el sistema.</p>
      *
      * @param cliente     autor de la review
      * @param local       local valorado
@@ -182,6 +205,102 @@ public final class Review {
         if (this.contestacion == contestacion) {
             this.contestacion = null;
         }
+    }
+
+    /**
+     * Indica si la review está enlazada con el cliente y el local.
+     *
+     * @return {@code true} si se ha invocado {@link #vincular()} sin una
+     *         {@link #desvincular()} posterior
+     */
+    public boolean isVinculada() {
+        return vinculada;
+    }
+
+    /**
+     * Enlaza esta review con el cliente autor y el local valorado: se
+     * añade a {@link Cliente#getReviews()} y a {@link Local#getReviews()}.
+     *
+     * <p>Antes de modificar nada, comprueba que la review no esté ya
+     * vinculada, que el local esté vinculado (dado de alta en el sistema,
+     * véase {@link Local#isVinculado()}) y que el cliente no tenga ya
+     * vinculada otra review de la misma visita, es decir, del mismo local
+     * y con la misma fecha de visita (C05, ver {@link #equals(Object)});
+     * si alguna comprobación falla no se modifica el estado de nadie.</p>
+     *
+     * @throws IllegalStateException si la review ya estaba vinculada
+     * @throws DominioException si el local no está dado de alta o si el
+     *         cliente ya tiene una review de la misma visita (C05)
+     */
+    public void vincular() throws DominioException {
+        if (vinculada) {
+            throw new IllegalStateException("La review ya está vinculada.");
+        }
+        if (!local.isVinculado()) {
+            throw new DominioException("No se puede publicar la review de " + cliente.getNick()
+                    + " porque el local \"" + local.getNombre() + "\" no está dado de alta.");
+        }
+        if (cliente.getReviews().contains(this)) {
+            throw new DominioException(cliente.getNick() + " ya ha valorado su visita a \""
+                    + local.getNombre() + "\" del " + fechaVisita
+                    + " y no se puede valorar dos veces la misma visita.");
+        }
+        cliente.añadirReviewInterna(this);
+        local.añadirReviewInterna(this);
+        vinculada = true;
+    }
+
+    /**
+     * Desenlaza esta review del cliente y del local: se quita de
+     * {@link Cliente#getReviews()} y de {@link Local#getReviews()}. No
+     * afecta a la contestación asociada, si la hubiera.
+     *
+     * <p>Operación idempotente: si la review no estaba vinculada, no hace
+     * nada.</p>
+     */
+    public void desvincular() {
+        if (!vinculada) {
+            return;
+        }
+        cliente.quitarReviewInterna(this);
+        local.quitarReviewInterna(this);
+        vinculada = false;
+    }
+
+    /**
+     * Aplica la política de borrado a esta review y la desenlaza.
+     *
+     * <p>El único dependiente de una review es su {@link #getContestacion()
+     * contestación}, si tiene una. Con {@link PoliticaBorrado#BLOQUEAR}, si
+     * existe esa contestación se lanza una excepción sin modificar nada.
+     * Con {@link PoliticaBorrado#CASCADA}, primero se elimina la
+     * contestación (con su propio {@link Contestación#eliminar(PoliticaBorrado)})
+     * y después se desvincula esta review.</p>
+     *
+     * @param politica política a aplicar si la review tiene una
+     *                 contestación
+     * @return conjunto de solo lectura, en orden de eliminación, con esta
+     *         review y, si se eliminó en cascada, su contestación
+     * @throws NullPointerException si {@code politica} es {@code null}
+     * @throws DominioException si {@code politica} es
+     *         {@link PoliticaBorrado#BLOQUEAR} y la review tiene una
+     *         contestación
+     */
+    public Set<Object> eliminar(PoliticaBorrado politica) throws DominioException {
+        Objects.requireNonNull(politica, "La política de borrado es obligatoria.");
+        if (politica == PoliticaBorrado.BLOQUEAR && contestacion != null) {
+            throw new DominioException("No se puede eliminar la review de " + cliente.getNick()
+                    + " sobre \"" + local.getNombre() + "\" porque ya tiene una contestación del dueño; "
+                    + "bórrala antes o elimina la review en cascada.");
+        }
+
+        Set<Object> eliminados = new LinkedHashSet<>();
+        if (contestacion != null) {
+            eliminados.addAll(contestacion.eliminar(politica));
+        }
+        desvincular();
+        eliminados.add(this);
+        return Collections.unmodifiableSet(eliminados);
     }
 
     /**
