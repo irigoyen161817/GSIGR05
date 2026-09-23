@@ -56,9 +56,9 @@ Ambigüedades en los requisitos: consultar el anexo de preguntas de MiAulario. S
 
 1. **Proyecto** `GSIGR05` con paquete `GSILabs.BModel` — hecho.
 2. **Modelo** (`GSILabs.BModel`):
-   - Identificadores únicos generados de forma transparente para entidades sin clave natural (Review, Contestación, Reserva...), p. ej. con `java.util.concurrent.atomic.AtomicInteger`.
-   - Validaciones mediante **excepciones propias documentadas** (`@throws`), no `System.out` ni valores mágicos.
-   - Sobrescribir `toString()`, `equals()` **y** `hashCode()` en **todas** las clases instanciables, de forma coherente con la identidad de cada entidad (dirección para Local, nick para Usuario, id generado para el resto).
+   - Identidad por **clave natural** siempre que exista: `Usuario` → nick; `Local` → dirección; `Review` → cliente + local + fecha de visita; `Contestacion` → review contestada. Solo si una clase no tiene clave natural (previsiblemente `Reserva`) o `LeisureOffice`/`LookupService` exigen IDs numéricos, generar el ID en la propia clase con un contador estático (`private static final AtomicInteger CONTADOR = new AtomicInteger();` e `id = CONTADOR.incrementAndGet();` en el constructor). No crear clases utilitarias de generación de IDs.
+   - Errores mediante excepciones documentadas (`@throws`), no `System.out` ni valores mágicos. Única excepción propia: `DominioException` (ver sección 6.1).
+   - Sobrescribir `toString()`, `equals()` **y** `hashCode()` en **todas** las clases instanciables, de forma coherente con la identidad de cada entidad (la clave natural o, si no la hay, el id generado).
    - Encapsulación: atributos `private`, colecciones devueltas como copias o vistas inmodificables.
 3. **Sistema** (`GSILabs.BSystem`):
    - `LeisureOffice` y `LookupService` se **descargan de MiAulario**; deben copiarse sin alterar sus firmas. **No inventar sus métodos**: si no están en el repo, pedir al usuario que los añada antes de implementar `BusinessSystem`.
@@ -103,6 +103,33 @@ Antes de cerrar cualquier tarea, revisar el cambio contra esta tabla.
 - Invariantes intrínsecas (longitudes, rangos, edad) en el modelo; invariantes de conjunto (unicidad, cardinalidades, existencia) en `BusinessSystem`.
 - Solo biblioteca estándar de Java; sin dependencias externas.
 - Fechas con `java.time` (`LocalDate`, `LocalTime`, `LocalDateTime`).
+
+### 6.1 Excepciones
+
+- La **única excepción propia** del proyecto es `GSILabs.BModel.DominioException` (comprobada, extiende `Exception`). No crear más excepciones personalizadas ni jerarquías de excepciones.
+- Se lanza **solo cuando se incumple una regla de negocio** C01–C09: dirección repetida, nick repetido o de menos de 3 caracteres, usuario menor de 14 años, descripción de más de 300 caracteres, comentario de más de 500, valoración fuera de 0–5, local sin dueños o con más de 3, review duplicada de la misma visita, segunda contestación, contestación de alguien que no es dueño del local, reserva en un Pub o en un local inexistente, etc.
+- El resto de errores usa las **excepciones estándar de Java**, importándolas si hace falta (`java.util.NoSuchElementException`, etc.):
+  - `NullPointerException` para argumentos nulos (`Objects.requireNonNull(x, "...")`).
+  - `IllegalArgumentException` para argumentos mal formados que no son una regla de negocio.
+  - `IllegalStateException` para usar un objeto en un estado no válido.
+- **El mensaje explica la regla incumplida en lenguaje natural**, como se lo diría una persona al usuario: qué ha pasado y por qué no se permite, con los datos concretos del caso. Nada de códigos, nombres de variables ni mensajes genéricos tipo "Error de validación".
+
+```java
+// Bien
+throw new DominioException("No se puede registrar el local \"" + nombre
+        + "\" porque ya existe otro local en " + direccion + ".");
+throw new DominioException("El usuario \"" + nick + "\" tiene " + edad
+        + " años y no se permite registrar usuarios menores de 14.");
+throw new DominioException("El local \"" + local.getNombre()
+        + "\" ya tiene 3 dueños, que es el máximo permitido.");
+
+// Mal
+throw new DominioException("C06 violated");
+throw new DominioException("Error: edad inválida");
+```
+
+- Documentar cada `DominioException` con `@throws DominioException si ...`, describiendo la regla en lenguaje natural.
+- Quien captura la excepción (p. ej. el `Tester`) muestra `e.getMessage()` tal cual, así que el mensaje debe entenderse por sí solo.
 
 ## 7. Entrega
 
