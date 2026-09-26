@@ -1,7 +1,10 @@
 package GSILabs.BModel;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -25,6 +28,20 @@ import java.util.concurrent.atomic.AtomicInteger;
  * clave natural: nada impide que un cliente haga dos reservas con los
  * mismos datos. Por eso cada reserva recibe al crearse un identificador
  * único, generado con un contador propio de la clase.</p>
+ * <p><b>Ciclo de vida.</b> Una reserva se crea sin estar enlazada con el
+ * cliente ni con el local reservado: el constructor solo valida los
+ * datos, sin tocar ninguna otra entidad (evita que {@code this} escape
+ * del constructor antes de terminar de construirse). Es responsabilidad
+ * de quien da de alta la reserva, típicamente
+ * {@code GSILabs.BSystem.BusinessSystem} tras comprobar que el local está
+ * dado de alta en el sistema, invocar {@link #vincular()} para
+ * reflejarla en {@link Cliente#getReservas()} y, como todo
+ * {@code Reservable} del modelo es también un {@link Local}, en
+ * {@link Local#getReservas()}. Al dar de baja la reserva hay que invocar
+ * {@link #desvincular()} para deshacer ese enlace. La política de borrado
+ * configurable se aplica con {@link #eliminar(PoliticaBorrado)}; una
+ * reserva no tiene dependientes propios, así que la política no afecta a
+ * su resultado.</p>
  */
 public final class Reserva {
 
@@ -42,6 +59,7 @@ public final class Reserva {
     private final Reservable reservable;
     private final LocalDateTime fechaHora;
     private final Integer descuentoPorcentaje;
+    private boolean vinculada;
 
     /**
      * Crea una reserva sin descuento.
@@ -56,7 +74,12 @@ public final class Reserva {
     }
 
     /**
-     * Crea una reserva con un posible porcentaje de descuento.
+     * Crea una reserva con un posible porcentaje de descuento, sin
+     * enlazarla todavía con el cliente ni con el local.
+     *
+     * <p>El constructor solo valida los datos; no modifica el cliente ni
+     * el local. Para reflejar la reserva en ellos hay que invocar
+     * {@link #vincular()} una vez dada de alta en el sistema.</p>
      *
      * @param cliente             cliente que reserva
      * @param reservable          local reservado
@@ -140,6 +163,84 @@ public final class Reserva {
      */
     public Integer getDescuentoPorcentaje() {
         return descuentoPorcentaje;
+    }
+
+    /**
+     * Indica si la reserva está enlazada con el cliente y el local.
+     *
+     * @return {@code true} si se ha invocado {@link #vincular()} sin una
+     *         {@link #desvincular()} posterior
+     */
+    public boolean isVinculada() {
+        return vinculada;
+    }
+
+    /**
+     * Enlaza esta reserva con el cliente y el local reservado: se añade a
+     * {@link Cliente#getReservas()} y a {@link Local#getReservas()}.
+     *
+     * <p>Antes de modificar nada, comprueba que la reserva no esté ya
+     * vinculada y que el local esté vinculado (dado de alta en el
+     * sistema, véase {@link Local#isVinculado()}); si alguna comprobación
+     * falla no se modifica el estado de nadie.</p>
+     *
+     * <p>El cast de {@link #getReservable()} a {@link Local} es seguro en
+     * tiempo de compilación: {@link Reservable} es una interfaz sellada
+     * que solo permite como implementaciones a {@link Bar} y
+     * {@link Restaurante}, ambas subclases de {@link Local}, por lo que
+     * no hace falta comprobarlo con {@code instanceof}.</p>
+     *
+     * @throws IllegalStateException si la reserva ya estaba vinculada
+     * @throws DominioException si el local reservado no está dado de alta
+     *         (no se puede reservar en un local que no existe)
+     */
+    public void vincular() throws DominioException {
+        if (vinculada) {
+            throw new IllegalStateException("La reserva ya está vinculada.");
+        }
+        Local local = (Local) reservable;
+        if (!local.isVinculado()) {
+            throw new DominioException("No se puede registrar la reserva de " + cliente.getNick()
+                    + " porque el local \"" + local.getNombre() + "\" no está dado de alta en el sistema.");
+        }
+        cliente.añadirReservaInterna(this);
+        local.añadirReservaInterna(this);
+        vinculada = true;
+    }
+
+    /**
+     * Desenlaza esta reserva del cliente y del local: se quita de
+     * {@link Cliente#getReservas()} y de {@link Local#getReservas()}.
+     *
+     * <p>Operación idempotente: si la reserva no estaba vinculada, no
+     * hace nada.</p>
+     */
+    public void desvincular() {
+        if (!vinculada) {
+            return;
+        }
+        cliente.quitarReservaInterna(this);
+        ((Local) reservable).quitarReservaInterna(this);
+        vinculada = false;
+    }
+
+    /**
+     * Aplica la política de borrado a esta reserva y la desenlaza.
+     *
+     * <p>Una reserva no tiene dependientes propios, así que la política
+     * no afecta al resultado: en ambos modos se desvincula la reserva.</p>
+     *
+     * @param politica política de borrado; no se usa para decidir nada,
+     *                 pero debe indicarse
+     * @return conjunto de solo lectura con únicamente esta reserva
+     * @throws NullPointerException si {@code politica} es {@code null}
+     */
+    public Set<Object> eliminar(PoliticaBorrado politica) {
+        Objects.requireNonNull(politica, "La política de borrado es obligatoria.");
+        desvincular();
+        Set<Object> eliminados = new LinkedHashSet<>();
+        eliminados.add(this);
+        return Collections.unmodifiableSet(eliminados);
     }
 
     /**

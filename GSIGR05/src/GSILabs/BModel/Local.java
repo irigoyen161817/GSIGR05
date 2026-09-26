@@ -29,12 +29,18 @@ import java.util.Set;
  * {@link #vincular()} para reflejar el local en la colección de locales
  * de cada uno de sus dueños. Al dar de baja el local hay que invocar
  * {@link #desvincular()} para deshacer ese enlace. La política de borrado
- * (bloquear la baja o propagarla en cascada a las entidades dependientes
- * del local) se construye encima de estas operaciones en otra issue; esta
- * clase no la implementa.</p>
+ * configurable (bloquear la baja o propagarla en cascada a las reviews y
+ * reservas dependientes del local) se aplica con
+ * {@link #eliminar(PoliticaBorrado)}.</p>
  *
  * <p>Los tipos concretos ({@link Restaurante}, {@link Bar} y
  * {@link Pub}) heredan de {@code Local}.</p>
+ *
+ * <p>Un local también mantiene, a efectos de coherencia al eliminar
+ * (véase {@link PoliticaBorrado}), las reviews y reservas vinculadas que
+ * lo referencian, sincronizadas por
+ * {@link Review#vincular()}/{@link Review#desvincular()} y
+ * {@link Reserva#vincular()}/{@link Reserva#desvincular()}.</p>
  */
 public abstract class Local {
 
@@ -52,6 +58,8 @@ public abstract class Local {
     private String descripcion;
     private final Set<Dueño> dueños = new LinkedHashSet<>();
     private boolean vinculado;
+    private final Set<Review> reviews = new LinkedHashSet<>();
+    private final Set<Reserva> reservas = new LinkedHashSet<>();
 
     /**
      * Crea un local con su primer dueño, sin enlazarlo todavía con él.
@@ -288,5 +296,107 @@ public abstract class Local {
     @Override
     public final int hashCode() {
         return direccion.hashCode();
+    }
+
+    /**
+     * Devuelve las reviews que se han publicado sobre este local.
+     *
+     * @return vista de solo lectura de las reviews del local
+     */
+    public Set<Review> getReviews() {
+        return Collections.unmodifiableSet(reviews);
+    }
+
+    /**
+     * Registra una review sobre este local. Solo debe invocarse desde
+     * {@link Review}, en cuyo constructor se crea la asociación.
+     *
+     * @param review review que referencia a este local
+     */
+    void añadirReviewInterna(Review review) {
+        reviews.add(review);
+    }
+
+    /**
+     * Quita una review de este local. Solo debe invocarse desde
+     * {@link Review#desvincular()}.
+     *
+     * @param review review a desasociar de este local
+     */
+    void quitarReviewInterna(Review review) {
+        reviews.remove(review);
+    }
+
+    /**
+     * Devuelve las reservas hechas sobre este local.
+     *
+     * @return vista de solo lectura de las reservas del local
+     */
+    public Set<Reserva> getReservas() {
+        return Collections.unmodifiableSet(reservas);
+    }
+
+    /**
+     * Registra una reserva sobre este local. Solo debe invocarse desde
+     * {@link Reserva}, en cuyo constructor se crea la asociación.
+     *
+     * @param reserva reserva que referencia a este local
+     */
+    void añadirReservaInterna(Reserva reserva) {
+        reservas.add(reserva);
+    }
+
+    /**
+     * Quita una reserva de este local. Solo debe invocarse desde
+     * {@link Reserva#desvincular()}.
+     *
+     * @param reserva reserva a desasociar de este local
+     */
+    void quitarReservaInterna(Reserva reserva) {
+        reservas.remove(reserva);
+    }
+
+    /**
+     * Aplica la política de borrado a este local y lo desvincula de sus
+     * dueños.
+     *
+     * <p>Los dependientes de un local son sus {@link #getReviews()
+     * reviews} y sus {@link #getReservas() reservas} vinculadas. Con
+     * {@link PoliticaBorrado#BLOQUEAR}, si tiene alguna se lanza una
+     * excepción sin modificar nada. Con {@link PoliticaBorrado#CASCADA},
+     * se elimina cada review (con su propio
+     * {@link Review#eliminar(PoliticaBorrado)}, que arrastra su
+     * contestación si la tuviera) y cada reserva (con
+     * {@link Reserva#eliminar(PoliticaBorrado)}), y después se desvincula
+     * este local de todos sus dueños.</p>
+     *
+     * @param politica política a aplicar si el local tiene reviews o
+     *                 reservas
+     * @return conjunto de solo lectura, en orden de eliminación, con las
+     *         entidades eliminadas (contestaciones, reviews y reservas) y,
+     *         al final, este local
+     * @throws NullPointerException si {@code politica} es {@code null}
+     * @throws DominioException si {@code politica} es
+     *         {@link PoliticaBorrado#BLOQUEAR} y el local tiene alguna
+     *         review o reserva
+     */
+    public Set<Object> eliminar(PoliticaBorrado politica) throws DominioException {
+        Objects.requireNonNull(politica, "La política de borrado es obligatoria.");
+        if (politica == PoliticaBorrado.BLOQUEAR && (!reviews.isEmpty() || !reservas.isEmpty())) {
+            throw new DominioException("No se puede eliminar el local \"" + nombre + "\" porque tiene "
+                    + reviews.size() + " review(s) y " + reservas.size() + " reserva(s); "
+                    + "bórralas antes o elimínalo en cascada.");
+        }
+
+        Set<Object> eliminados = new LinkedHashSet<>();
+        for (Review review : new LinkedHashSet<>(reviews)) {
+            eliminados.addAll(review.eliminar(politica));
+        }
+        for (Reserva reserva : new LinkedHashSet<>(reservas)) {
+            eliminados.addAll(reserva.eliminar(politica));
+        }
+        desvincular();
+        eliminados.add(this);
+        return Collections.unmodifiableSet(eliminados);
     }
 }

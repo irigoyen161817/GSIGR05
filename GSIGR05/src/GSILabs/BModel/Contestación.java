@@ -1,7 +1,10 @@
 package GSILabs.BModel;
 
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Respuesta de un {@link Dueño} a una {@link Review} sobre un local de su
@@ -20,11 +23,15 @@ import java.util.Objects;
  * sin tocar la review (evita que {@code this} escape del constructor
  * antes de terminar de construirse). Es responsabilidad de quien da de
  * alta la contestación, típicamente {@code GSILabs.BSystem.BusinessSystem}
- * tras comprobar que la review existe en el sistema, invocar
- * {@link #vincular()} para asociarla con la review. Al dar de baja la
- * contestación hay que invocar {@link #desvincular()} para deshacer ese
- * enlace. Así, una contestación rechazada por el sistema no deja rastro
- * en la review.</p>
+ * tras comprobar que la review existe (está vinculada) en el sistema,
+ * invocar {@link #vincular()} para asociarla con la review y con el
+ * dueño autor (véase {@link Dueño#getContestaciones()}). Al dar de baja
+ * la contestación hay que invocar {@link #desvincular()} para deshacer
+ * ese enlace. Así, una contestación rechazada por el sistema, o hecha
+ * sobre una review que no está dada de alta, no deja rastro. La política
+ * de borrado configurable se aplica con
+ * {@link #eliminar(PoliticaBorrado)}; una contestación no tiene
+ * dependientes propios, así que la política no afecta a su resultado.</p>
  */
 public final class Contestación {
 
@@ -140,17 +147,26 @@ public final class Contestación {
      * {@link Review#getContestacion()}).
      *
      * <p>Antes de modificar nada, comprueba que la contestación no esté
-     * ya vinculada, que la review no tenga ya asignada otra contestación
-     * (C07) y que el autor siga siendo dueño del local reseñado; si
-     * alguna comprobación falla no se modifica el estado de nadie.</p>
+     * ya vinculada, que la review esté vinculada (dada de alta en el
+     * sistema, véase {@link Review#isVinculada()}, escenario de contestar
+     * una review inexistente), que la review no tenga ya asignada otra
+     * contestación (C07) y que el autor siga siendo dueño del local
+     * reseñado; si alguna comprobación falla no se modifica el estado de
+     * nadie.</p>
      *
      * @throws IllegalStateException si la contestación ya estaba vinculada
-     * @throws DominioException si la review ya tiene otra contestación o
-     *         si el autor ya no es dueño del local reseñado (C07)
+     * @throws DominioException si la review contestada no está dada de
+     *         alta, si ya tiene otra contestación o si el autor ya no es
+     *         dueño del local reseñado (C07)
      */
     public void vincular() throws DominioException {
         if (vinculada) {
             throw new IllegalStateException("La contestación ya está vinculada a la review.");
+        }
+        if (!review.isVinculada()) {
+            throw new DominioException(autor.getNick() + " no puede contestar la review de "
+                    + review.getCliente().getNick() + " sobre \"" + review.getLocal().getNombre()
+                    + "\" porque esa review no existe en el sistema.");
         }
         if (review.getContestacion() != null) {
             throw new DominioException("La review de " + review.getCliente().getNick() + " sobre \""
@@ -158,6 +174,7 @@ public final class Contestación {
         }
         comprobarQueEsDueño(autor, review);
         review.asignarContestacionInterna(this);
+        autor.añadirContestacionInterna(this);
         vinculada = true;
     }
 
@@ -174,7 +191,28 @@ public final class Contestación {
             return;
         }
         review.quitarContestacionInterna(this);
+        autor.quitarContestacionInterna(this);
         vinculada = false;
+    }
+
+    /**
+     * Aplica la política de borrado a esta contestación y la desenlaza.
+     *
+     * <p>Una contestación no tiene dependientes propios, así que la
+     * política no afecta al resultado: en ambos modos se desvincula la
+     * contestación.</p>
+     *
+     * @param politica política de borrado; no se usa para decidir nada,
+     *                 pero debe indicarse
+     * @return conjunto de solo lectura con únicamente esta contestación
+     * @throws NullPointerException si {@code politica} es {@code null}
+     */
+    public Set<Object> eliminar(PoliticaBorrado politica) {
+        Objects.requireNonNull(politica, "La política de borrado es obligatoria.");
+        desvincular();
+        Set<Object> eliminados = new LinkedHashSet<>();
+        eliminados.add(this);
+        return Collections.unmodifiableSet(eliminados);
     }
 
     /**
