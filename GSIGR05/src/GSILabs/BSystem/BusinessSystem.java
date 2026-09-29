@@ -19,9 +19,11 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.function.IntFunction;
 
 /**
  * Sistema de gestión del portal de ocio: almacena en memoria (sin
@@ -895,55 +897,106 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     }
 
     /**
-     * Lista los locales de cualquier tipo de una localidad y provincia.
+     * Lista los locales registrados de cualquier tipo ({@link Bar},
+     * {@link Pub} o {@link Restaurante}) de una localidad y provincia.
+     *
+     * <p>La localidad y la provincia se comparan con
+     * {@link Direccion#estaEn(String, String)}: sin distinguir mayúsculas y
+     * minúsculas e ignorando espacios sobrantes, igual que al comprobar si
+     * dos locales comparten dirección (C01). Los locales aparecen en el orden
+     * en que se dieron de alta.</p>
      *
      * @param ciudad    localidad de interés
      * @param provincia provincia en la que se encuentra la localidad
-     * @return los locales encontrados, potencialmente de longitud 0
-     * @throws UnsupportedOperationException pendiente de implementar en #26
+     * @return los locales encontrados, nunca {@code null} y potencialmente de
+     *         longitud 0
+     * @throws NullPointerException si {@code ciudad} o {@code provincia} son
+     *                              {@code null}
      */
     @Override
     public Local[] listarLocales(String ciudad, String provincia) {
-        throw new UnsupportedOperationException("Pendiente: #26");
+        return listar(Local.class, ciudad, provincia, Local[]::new);
     }
 
     /**
-     * Lista los bares de una localidad y provincia.
+     * Lista los bares registrados de una localidad y provincia, con el mismo
+     * criterio de comparación y orden que
+     * {@link #listarLocales(String, String)}.
      *
      * @param ciudad    localidad de interés
      * @param provincia provincia en la que se encuentra la localidad
-     * @return los bares encontrados, potencialmente de longitud 0
-     * @throws UnsupportedOperationException pendiente de implementar en #26
+     * @return los bares encontrados, nunca {@code null} y potencialmente de
+     *         longitud 0
+     * @throws NullPointerException si {@code ciudad} o {@code provincia} son
+     *                              {@code null}
      */
     @Override
     public Bar[] listarBares(String ciudad, String provincia) {
-        throw new UnsupportedOperationException("Pendiente: #26");
+        return listar(Bar.class, ciudad, provincia, Bar[]::new);
     }
 
     /**
-     * Lista los restaurantes de una localidad y provincia.
+     * Lista los restaurantes registrados de una localidad y provincia, con
+     * el mismo criterio de comparación y orden que
+     * {@link #listarLocales(String, String)}.
      *
      * @param ciudad    localidad de interés
      * @param provincia provincia en la que se encuentra la localidad
-     * @return los restaurantes encontrados, potencialmente de longitud 0
-     * @throws UnsupportedOperationException pendiente de implementar en #26
+     * @return los restaurantes encontrados, nunca {@code null} y
+     *         potencialmente de longitud 0
+     * @throws NullPointerException si {@code ciudad} o {@code provincia} son
+     *                              {@code null}
      */
     @Override
     public Restaurante[] listarRestaurantes(String ciudad, String provincia) {
-        throw new UnsupportedOperationException("Pendiente: #26");
+        return listar(Restaurante.class, ciudad, provincia, Restaurante[]::new);
     }
 
     /**
-     * Lista los pubs de una localidad y provincia.
+     * Lista los pubs registrados de una localidad y provincia, con el mismo
+     * criterio de comparación y orden que
+     * {@link #listarLocales(String, String)}.
      *
      * @param ciudad    localidad de interés
      * @param provincia provincia en la que se encuentra la localidad
-     * @return los pubs encontrados, potencialmente de longitud 0
-     * @throws UnsupportedOperationException pendiente de implementar en #26
+     * @return los pubs encontrados, nunca {@code null} y potencialmente de
+     *         longitud 0
+     * @throws NullPointerException si {@code ciudad} o {@code provincia} son
+     *                              {@code null}
      */
     @Override
     public Pub[] listarPubs(String ciudad, String provincia) {
-        throw new UnsupportedOperationException("Pendiente: #26");
+        return listar(Pub.class, ciudad, provincia, Pub[]::new);
+    }
+
+    /**
+     * Devuelve los locales registrados de un tipo concreto que están en la
+     * localidad y provincia indicadas, en orden de alta.
+     *
+     * @param <T>       tipo de local que se busca
+     * @param tipo      clase del tipo de local que se busca
+     * @param ciudad    localidad de interés
+     * @param provincia provincia en la que se encuentra la localidad
+     * @param nuevoArray crea el array resultado a partir de su longitud
+     * @return los locales encontrados, potencialmente de longitud 0
+     * @throws NullPointerException si {@code ciudad} o {@code provincia} son
+     *                              {@code null}
+     */
+    private <T extends Local> T[] listar(Class<T> tipo, String ciudad, String provincia,
+            IntFunction<T[]> nuevoArray) {
+        if (ciudad == null) {
+            throw new NullPointerException("Hay que indicar la localidad de los locales que se buscan.");
+        }
+        if (provincia == null) {
+            throw new NullPointerException("Hay que indicar la provincia de los locales que se buscan.");
+        }
+        List<T> encontrados = new ArrayList<>();
+        for (Local local : locales.values()) {
+            if (tipo.isInstance(local) && local.getDireccion().estaEn(ciudad, provincia)) {
+                encontrados.add(tipo.cast(local));
+            }
+        }
+        return encontrados.toArray(nuevoArray);
     }
 
     /**
