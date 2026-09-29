@@ -2,6 +2,7 @@ package GSILabs.BModel;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
@@ -9,7 +10,9 @@ import java.util.Set;
  * Local de tipo bar.
  *
  * <p>Además de los datos comunes de {@link Local}, un bar guarda sus
- * especialidades como un conjunto de etiquetas (C02). Un bar es
+ * especialidades como un conjunto de etiquetas (C02), guardadas sin
+ * espacios en los extremos y en minúsculas para que {@code "Tapas"} y
+ * {@code "tapas "} cuenten como la misma. Un bar es
  * {@link Reservable}: se pueden registrar reservas sobre él (C09).</p>
  */
 public final class Bar extends Local implements Reservable {
@@ -41,7 +44,8 @@ public final class Bar extends Local implements Reservable {
     }
 
     /**
-     * Añade una especialidad al bar. Si ya estaba, no hace nada.
+     * Añade una especialidad al bar, sin espacios en los extremos y en
+     * minúsculas. Si ya estaba, no hace nada.
      *
      * @param especialidad etiqueta a añadir
      * @throws NullPointerException si la especialidad es {@code null}
@@ -52,16 +56,23 @@ public final class Bar extends Local implements Reservable {
         if (especialidad.isBlank()) {
             throw new IllegalArgumentException("La especialidad no puede estar en blanco.");
         }
-        especialidades.add(especialidad);
+        especialidades.add(normalizar(especialidad));
     }
 
     /**
-     * Quita una especialidad del bar. Si no estaba, no hace nada.
+     * Quita una especialidad del bar, sin distinguir mayúsculas ni espacios
+     * en los extremos. Si no estaba, no hace nada.
      *
      * @param especialidad etiqueta a quitar
      */
     public void quitarEspecialidad(String especialidad) {
-        especialidades.remove(especialidad);
+        if (especialidad != null) {
+            especialidades.remove(normalizar(especialidad));
+        }
+    }
+
+    private static String normalizar(String especialidad) {
+        return especialidad.strip().toLowerCase(Locale.ROOT);
     }
 
     @Override
