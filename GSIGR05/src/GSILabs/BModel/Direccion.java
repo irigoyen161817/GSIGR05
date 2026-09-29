@@ -58,6 +58,14 @@ public final class Direccion {
         if (valor.isBlank()) {
             throw new IllegalArgumentException(campo + " de la dirección no puede estar en blanco.");
         }
+        return compactar(valor);
+    }
+
+    /**
+     * Elimina los espacios en blanco de los extremos y colapsa las
+     * secuencias de varios espacios internos en uno solo.
+     */
+    private static String compactar(String valor) {
         return ESPACIOS_MULTIPLES.matcher(valor.strip()).replaceAll(" ");
     }
 
@@ -95,6 +103,31 @@ public final class Direccion {
      */
     public String getNumero() {
         return numero;
+    }
+
+    /**
+     * Comprueba si la dirección está en la localidad y provincia indicadas.
+     *
+     * <p>Se comparan con el mismo criterio que {@link #equals(Object)}: se
+     * ignoran los espacios de los extremos y los espacios internos repetidos,
+     * y no se distinguen mayúsculas de minúsculas. Las tildes sí cuentan. Una
+     * localidad o provincia en blanco no coincide con ninguna dirección.</p>
+     *
+     * @param localidad localidad que se busca
+     * @param provincia provincia en la que está la localidad
+     * @return {@code true} si la dirección está en esa localidad y provincia
+     * @throws NullPointerException si {@code localidad} o {@code provincia}
+     *                              son {@code null}
+     */
+    public boolean estaEn(String localidad, String provincia) {
+        if (localidad == null) {
+            throw new NullPointerException("Hay que indicar la localidad.");
+        }
+        if (provincia == null) {
+            throw new NullPointerException("Hay que indicar la provincia.");
+        }
+        return clave(this.localidad).equals(clave(compactar(localidad)))
+                && clave(this.provincia).equals(clave(compactar(provincia)));
     }
 
     /**
