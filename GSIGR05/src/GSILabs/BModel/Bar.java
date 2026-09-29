@@ -65,8 +65,7 @@ public final class Bar extends Local implements Reservable {
     }
 
     @Override
-    public String toString() {
-        return "Bar{nombre=" + getNombre() + ", direccion=" + getDireccion()
-                + ", especialidades=" + especialidades + "}";
+    protected String camposPropiosToString() {
+        return ", especialidades=" + especialidades;
     }
 }

@@ -274,8 +274,25 @@ public abstract class Local {
         return direccion.hashCode();
     }
 
+    /**
+     * Devuelve el tipo concreto del local, su nombre, su dirección y los
+     * campos propios del tipo que aporta {@link #camposPropiosToString()}.
+     *
+     * @return representación textual del local
+     */
     @Override
-    public String toString() {
-        return getClass().getSimpleName() + "{nombre=" + nombre + ", direccion=" + direccion + "}";
+    public final String toString() {
+        return getClass().getSimpleName() + "{nombre=" + nombre + ", direccion=" + direccion
+                + camposPropiosToString() + "}";
+    }
+
+    /**
+     * Devuelve los campos propios del tipo concreto de local para incluirlos
+     * en {@link #toString()}, empezando por {@code ", "}.
+     *
+     * @return los campos propios, o una cadena vacía si no tiene
+     */
+    protected String camposPropiosToString() {
+        return "";
     }
 }

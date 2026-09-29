@@ -60,8 +60,7 @@ public final class Pub extends Local {
     }
 
     @Override
-    public String toString() {
-        return "Pub{nombre=" + getNombre() + ", direccion=" + getDireccion()
-                + ", horaApertura=" + horaApertura + ", horaClausura=" + horaClausura + "}";
+    protected String camposPropiosToString() {
+        return ", horaApertura=" + horaApertura + ", horaClausura=" + horaClausura;
     }
 }

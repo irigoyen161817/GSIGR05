@@ -86,9 +86,8 @@ public final class Restaurante extends Local implements Reservable {
     }
 
     @Override
-    public String toString() {
-        return "Restaurante{nombre=" + getNombre() + ", direccion=" + getDireccion()
-                + ", precioMenu=" + precioMenu + ", capacidadTotal=" + capacidadTotal
-                + ", capacidadMaximaPorMesa=" + capacidadMaximaPorMesa + "}";
+    protected String camposPropiosToString() {
+        return ", precioMenu=" + precioMenu + ", capacidadTotal=" + capacidadTotal
+                + ", capacidadMaximaPorMesa=" + capacidadMaximaPorMesa;
     }
 }
