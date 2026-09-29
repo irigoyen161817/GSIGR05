@@ -11,8 +11,9 @@ import java.util.Objects;
  * {@value #MAX_CARACTERES_COMENTARIO} caracteres y una fecha de creación
  * asignada automáticamente (C07, C08). Solo puede crearla un usuario que
  * sea dueño del local asociado a la review, y una review no puede tener
- * más de una contestación: ambas restricciones las comprueba el
- * constructor.</p>
+ * más de una contestación. El constructor comprueba que el autor sea
+ * dueño del local; {@link #vincular()} vuelve a comprobarlo y además
+ * rechaza una segunda contestación para la misma review.</p>
  *
  * <p><b>Ciclo de vida.</b> Una contestación se crea sin estar enlazada
  * con la review que contesta: el constructor solo valida los datos (y
