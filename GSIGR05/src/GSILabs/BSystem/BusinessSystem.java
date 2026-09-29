@@ -51,15 +51,17 @@ import java.util.Set;
  *   <li>si la operación tiene éxito, el último error vuelve a
  *       {@code null}.</li>
  * </ol>
+ * <p>Solo las altas, bajas y modificaciones actualizan el último error;
+ * las consultas no lo modifican.</p>
  * <p>El motivo del último rechazo se consulta con {@link #getUltimoError()}.
  * Los errores de uso que no son reglas de negocio (por ejemplo, un
  * argumento {@code null}) no se capturan y se señalan con las excepciones
- * estándar de Java.</p>
+ * estándar de Java, salvo que el interfaz indique un resultado concreto
+ * ({@code false} o {@code null}) para ese caso.</p>
  *
  * <p><b>Coherencia al borrar.</b> Las bajas de entidades con dependientes
- * (un local con reviews o reservas, un cliente con reviews o reservas, un
- * propietario que es el único dueño de algún local, una review con
- * contestación) aplican una {@link PoliticaBorrado} configurable:</p>
+ * (los que define cada {@code eliminar(PoliticaBorrado)} del modelo; ver
+ * {@link PoliticaBorrado}) aplican una {@link PoliticaBorrado} configurable:</p>
  * <ul>
  *   <li>{@link PoliticaBorrado#BLOQUEAR} (por defecto): la baja se
  *       rechaza, devuelve {@code false}, no se modifica nada y
@@ -170,10 +172,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         ultimoError = e.getMessage();
     }
 
-    /* ---------------------------------------------------------------- */
-    /* Usuarios (#24)                                                    */
-    /* ---------------------------------------------------------------- */
-
     /**
      * {@inheritDoc}
      *
@@ -229,10 +227,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         throw new UnsupportedOperationException("Pendiente: #24");
     }
 
-    /* ---------------------------------------------------------------- */
-    /* Reviews (#27)                                                     */
-    /* ---------------------------------------------------------------- */
-
     /**
      * {@inheritDoc}
      *
@@ -272,10 +266,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     public Review[] verReviews(Local l) {
         throw new UnsupportedOperationException("Pendiente: #27");
     }
-
-    /* ---------------------------------------------------------------- */
-    /* Contestaciones (#28)                                              */
-    /* ---------------------------------------------------------------- */
 
     /**
      * {@inheritDoc}
@@ -326,10 +316,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     public boolean eliminaContestacion(Review r) {
         throw new UnsupportedOperationException("Pendiente: #28");
     }
-
-    /* ---------------------------------------------------------------- */
-    /* Locales y propietarios (#25)                                      */
-    /* ---------------------------------------------------------------- */
 
     /**
      * {@inheritDoc}
@@ -394,10 +380,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         throw new UnsupportedOperationException("Pendiente: #25");
     }
 
-    /* ---------------------------------------------------------------- */
-    /* Reservas (#29)                                                    */
-    /* ---------------------------------------------------------------- */
-
     /**
      * {@inheritDoc}
      *
@@ -447,10 +429,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     public boolean eliminarReserva(Reserva r) {
         throw new UnsupportedOperationException("Pendiente: #29");
     }
-
-    /* ---------------------------------------------------------------- */
-    /* Listados de locales (#26)                                         */
-    /* ---------------------------------------------------------------- */
 
     /**
      * Lista los locales de cualquier tipo de una localidad y provincia.
@@ -503,10 +481,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     public Pub[] listarPubs(String ciudad, String provincia) {
         throw new UnsupportedOperationException("Pendiente: #26");
     }
-
-    /* ---------------------------------------------------------------- */
-    /* LookupService (#30)                                               */
-    /* ---------------------------------------------------------------- */
 
     /**
      * {@inheritDoc}
