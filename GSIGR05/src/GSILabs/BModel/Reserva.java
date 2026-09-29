@@ -81,11 +81,11 @@ public final class Reserva {
      */
     private Reserva(Integer descuentoPorcentaje, Cliente cliente, Reservable reservable,
             LocalDateTime fechaHora) {
-        this.id = CONTADOR.incrementAndGet();
         this.cliente = Objects.requireNonNull(cliente, "La reserva debe tener un cliente.");
         this.reservable = Objects.requireNonNull(reservable, "La reserva debe tener un local reservable.");
         this.fechaHora = Objects.requireNonNull(fechaHora, "La reserva debe tener fecha y hora.");
         this.descuentoPorcentaje = descuentoPorcentaje;
+        this.id = CONTADOR.incrementAndGet();
     }
 
     private static Integer validarDescuento(Integer descuentoPorcentaje) throws DominioException {
