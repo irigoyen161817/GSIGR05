@@ -65,7 +65,7 @@ public abstract class Usuario {
                     + " años y no se permite registrar a menores de " + EDAD_MINIMA + ".");
         }
 
-        this.nick = nick;
+        this.nick = nick.strip();
         this.contrasena = contrasena;
         this.fechaNacimiento = fechaNacimiento;
     }
