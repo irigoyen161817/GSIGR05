@@ -10,7 +10,7 @@ Instrucciones para agentes de código que trabajen en este repositorio. La fuent
 - Java: `javac.source`/`javac.target` = **23** (`GSIGR05/nbproject/project.properties`). No usar APIs posteriores.
 - Codificación **UTF-8** en todos los fuentes (nombres y Javadoc en español: `Dueño`, `Dirección`, `Contestación`...).
 - No modificar `GSIGR05/nbproject/build-impl.xml` (generado por NetBeans). Los cambios de build van en `GSIGR05/build.xml` o `project.properties`.
-- `main.class` actual: `gsigr05.GSIGR05` (esqueleto generado). Para ejecutar el Tester, cambiarlo a `GSILabs.BTesting.P01.Tester` o ejecutarlo con `run-single`.
+- `main.class`: `GSILabs.BTesting.P01.Tester`, así que `ant run` ejecuta el Tester (termina con código 0 si todas las comprobaciones son correctas y 1 si alguna falla).
 
 Comandos (desde la raíz del repo):
 
@@ -31,7 +31,7 @@ Verificar siempre que `jar` y `javadoc` terminan sin errores (y sin warnings de 
 | `GSILabs.BSystem` | `LeisureOffice`, `LookupService` (proporcionadas en MiAulario) y `BusinessSystem` (almacenamiento en memoria y operaciones). |
 | `GSILabs.BTesting.P01` | `Tester` ejecutable (`main`) con los sucesos S1–S10. |
 
-- Respetar exactamente estos nombres (con mayúsculas). No poner código de la práctica en el paquete `gsigr05`.
+- Respetar exactamente estos nombres (con mayúsculas). No crear otros paquetes (el esqueleto `gsigr05` de NetBeans se eliminó).
 - Nombre del proyecto: `GSIGR05` (grupo 05). No renombrar.
 
 ## 3. Requisitos de negocio (C01–C09)
