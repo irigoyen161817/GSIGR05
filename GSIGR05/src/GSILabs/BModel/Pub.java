@@ -21,7 +21,8 @@ public final class Pub extends Local {
      * Crea un pub con su primer dueño y su horario.
      *
      * <p>La hora de clausura puede ser anterior a la de apertura, lo que
-     * indica que el pub cierra de madrugada, al día siguiente.</p>
+     * indica que el pub cierra de madrugada, al día siguiente. Si ambas
+     * horas coinciden, el pub abre las 24 horas.</p>
      *
      * @param nombre       nombre del local
      * @param direccion    dirección física del local
