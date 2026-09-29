@@ -33,8 +33,8 @@ import java.util.Set;
  * del local) se construye encima de estas operaciones en otra issue; esta
  * clase no la implementa.</p>
  *
- * <p>Los tipos concretos ({@code Restaurante}, {@code Bar} y
- * {@code Pub}) heredan de {@code Local}.</p>
+ * <p>Los tipos concretos ({@link Restaurante}, {@link Bar} y
+ * {@link Pub}) heredan de {@code Local}.</p>
  */
 public abstract class Local {
 
@@ -281,14 +281,24 @@ public abstract class Local {
     }
 
     /**
-     * Devuelve una representación legible del local: su tipo concreto, su
-     * nombre y su dirección, por ejemplo
-     * {@code Bar{nombre=Casa Pepe, direccion=Calle Mayor 12, Pamplona (Navarra)}}.
+     * Devuelve el tipo concreto del local, su nombre, su dirección y los
+     * campos propios del tipo que aporta {@link #camposPropiosToString()}.
      *
-     * @return el tipo, el nombre y la dirección del local
+     * @return representación textual del local
      */
     @Override
-    public String toString() {
-        return getClass().getSimpleName() + "{nombre=" + nombre + ", direccion=" + direccion + "}";
+    public final String toString() {
+        return getClass().getSimpleName() + "{nombre=" + nombre + ", direccion=" + direccion
+                + camposPropiosToString() + "}";
+    }
+
+    /**
+     * Devuelve los campos propios del tipo concreto de local para incluirlos
+     * en {@link #toString()}, empezando por {@code ", "}.
+     *
+     * @return los campos propios, o una cadena vacía si no tiene
+     */
+    protected String camposPropiosToString() {
+        return "";
     }
 }
