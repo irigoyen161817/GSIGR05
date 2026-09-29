@@ -10,6 +10,12 @@ import java.time.LocalDate;
  * {@link Reservable} (C04). Esas operaciones se ofrecen desde
  * {@code GSILabs.BSystem.BusinessSystem}, que coordina la creación de las
  * entidades relacionadas.</p>
+ *
+ * <p>La igualdad ({@link Usuario#equals(Object)} y {@link Usuario#hashCode()})
+ * se hereda de {@link Usuario}, donde es {@code final} y se basa solo en el
+ * nick: así un {@code Cliente} y un {@code Propietario} con el mismo nick se
+ * consideran el mismo usuario, que es lo que permite garantizar que el nick
+ * es único (C03).</p>
  */
 public class Cliente extends Usuario {
 
@@ -28,8 +34,15 @@ public class Cliente extends Usuario {
         super(nick, contrasena, fechaNacimiento);
     }
 
+    /**
+     * Devuelve una representación legible del cliente: su perfil
+     * seguido de su nick, por ejemplo {@code Cliente ana}. Nunca incluye
+     * la contraseña.
+     *
+     * @return el perfil y el nick del cliente
+     */
     @Override
     public String toString() {
-        return "Cliente{nick=" + getNick() + "}";
+        return "Cliente " + getNick();
     }
 }

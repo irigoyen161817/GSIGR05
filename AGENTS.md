@@ -109,7 +109,7 @@ Antes de cerrar cualquier tarea, revisar el cambio contra esta tabla.
 - La **única excepción propia** del proyecto es `GSILabs.BModel.DominioException` (comprobada, extiende `Exception`). No crear más excepciones personalizadas ni jerarquías de excepciones.
 - Se lanza **solo cuando se incumple una regla de negocio** C01–C09: dirección repetida, nick repetido o de menos de 3 caracteres, usuario menor de 14 años, descripción de más de 300 caracteres, comentario de más de 500, valoración fuera de 0–5, local sin dueños o con más de 3, review duplicada de la misma visita, segunda contestación, contestación de alguien que no es dueño del local, reserva en un Pub o en un local inexistente, etc.
 - El resto de errores usa las **excepciones estándar de Java**, importándolas si hace falta (`java.util.NoSuchElementException`, etc.):
-  - `NullPointerException` para argumentos nulos (`Objects.requireNonNull(x, "...")`).
+  - `NullPointerException` para argumentos nulos, con un `if` explícito: `if (x == null) { throw new NullPointerException("..."); }` (no usar `Objects.requireNonNull`).
   - `IllegalArgumentException` para argumentos mal formados que no son una regla de negocio.
   - `IllegalStateException` para usar un objeto en un estado no válido.
 - **El mensaje explica la regla incumplida en lenguaje natural**, como se lo diría una persona al usuario: qué ha pasado y por qué no se permite, con los datos concretos del caso. Nada de códigos, nombres de variables ni mensajes genéricos tipo "Error de validación".
