@@ -340,7 +340,7 @@ public class BusinessSystem implements LeisureOffice, LookupService {
      * @throws DominioException si ya hay un usuario registrado con ese nick
      */
     private void comprobarNickLibre(String nick) throws DominioException {
-        if (usuarios.containsKey(nick)) {
+        if (existeNick(nick)) {
             throw new DominioException("Ya hay un usuario registrado con el nick \"" + nick
                     + "\" y no puede haber dos usuarios con el mismo nick.");
         }
@@ -356,7 +356,7 @@ public class BusinessSystem implements LeisureOffice, LookupService {
      *         nick o si está registrado con otro perfil
      */
     private Usuario usuarioRegistrado(Usuario u) throws DominioException {
-        Usuario registrado = usuarios.get(u.getNick());
+        Usuario registrado = obtenerUsuario(u.getNick());
         if (registrado == null) {
             throw new DominioException("El usuario \"" + u.getNick() + "\" no está registrado en el sistema.");
         }
