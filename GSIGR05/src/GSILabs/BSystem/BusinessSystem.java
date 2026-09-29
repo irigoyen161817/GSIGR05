@@ -1,0 +1,570 @@
+package GSILabs.BSystem;
+
+import GSILabs.BModel.Bar;
+import GSILabs.BModel.Cliente;
+import GSILabs.BModel.Contestacion;
+import GSILabs.BModel.Direccion;
+import GSILabs.BModel.DominioException;
+import GSILabs.BModel.Local;
+import GSILabs.BModel.PoliticaBorrado;
+import GSILabs.BModel.Propietario;
+import GSILabs.BModel.Pub;
+import GSILabs.BModel.Reserva;
+import GSILabs.BModel.Reservable;
+import GSILabs.BModel.Restaurante;
+import GSILabs.BModel.Review;
+import GSILabs.BModel.Usuario;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Sistema de gestión del portal de ocio: almacena en memoria (sin
+ * persistencia) los usuarios, locales, reviews, contestaciones y reservas,
+ * y ofrece las operaciones de {@link LeisureOffice} y
+ * {@link LookupService}.
+ *
+ * <p><b>Reparto de reglas.</b> Las reglas intrínsecas de cada entidad
+ * (longitud del nick, edad mínima, longitud de descripciones y
+ * comentarios, rango de la valoración...) las comprueba el propio modelo
+ * ({@code GSILabs.BModel}) al construir los objetos. Esta clase comprueba
+ * las reglas que dependen del conjunto de entidades registradas: nick
+ * único (C03), una sola dirección por local (C01), entre 1 y 3 dueños por
+ * local (C06), una review por visita (C05), una contestación por review
+ * hecha por un dueño del local (C07) y que no se reserve en locales que no
+ * están dados de alta (C09).</p>
+ *
+ * <p><b>Control de errores.</b> Los métodos de {@link LeisureOffice} y
+ * {@link LookupService} devuelven {@code boolean}, {@code null} o un valor
+ * especial y no declaran excepciones, así que esta clase no puede
+ * propagar la {@link DominioException} (comprobada) del modelo. Todas las
+ * operaciones siguen el mismo patrón:</p>
+ * <ol>
+ *   <li>la validación interna lanza una {@link DominioException} cuyo
+ *       mensaje explica en lenguaje natural qué regla de negocio se
+ *       incumple;</li>
+ *   <li>el método público la captura, guarda su mensaje como último error
+ *       y devuelve {@code false} o {@code null}, sin modificar nada;</li>
+ *   <li>si la operación tiene éxito, el último error vuelve a
+ *       {@code null}.</li>
+ * </ol>
+ * <p>Solo las altas, bajas y modificaciones actualizan el último error;
+ * las consultas no lo modifican.</p>
+ * <p>El motivo del último rechazo se consulta con {@link #getUltimoError()}.
+ * Los errores de uso que no son reglas de negocio (por ejemplo, un
+ * argumento {@code null}) no se capturan y se señalan con las excepciones
+ * estándar de Java, salvo que el interfaz indique un resultado concreto
+ * ({@code false} o {@code null}) para ese caso.</p>
+ *
+ * <p><b>Coherencia al borrar.</b> Las bajas de entidades con dependientes
+ * (los que define cada {@code eliminar(PoliticaBorrado)} del modelo; ver
+ * {@link PoliticaBorrado}) aplican una {@link PoliticaBorrado} configurable:</p>
+ * <ul>
+ *   <li>{@link PoliticaBorrado#BLOQUEAR} (por defecto): la baja se
+ *       rechaza, devuelve {@code false}, no se modifica nada y
+ *       {@link #getUltimoError()} explica qué la impide. Coincide con el
+ *       comportamiento que describe {@link LeisureOffice#eliminaReview(Review)}.</li>
+ *   <li>{@link PoliticaBorrado#CASCADA}: se eliminan también, de forma
+ *       recursiva, los dependientes, de modo que no queda ninguna entidad
+ *       apuntando a otra eliminada ni ningún local sin dueños.</li>
+ * </ul>
+ * <p>La política se elige al crear el sistema
+ * ({@link #BusinessSystem(PoliticaBorrado)}) y se puede cambiar después con
+ * {@link #setPoliticaBorrado(PoliticaBorrado)}.</p>
+ *
+ * <p><b>Estado de la implementación.</b> Los métodos que aún no están
+ * implementados lanzan {@link UnsupportedOperationException} indicando la
+ * issue del repositorio que los implementará.</p>
+ */
+public class BusinessSystem implements LeisureOffice, LookupService {
+
+    /** Usuarios registrados, indexados por su nick (clave natural, C03). */
+    private final Map<String, Usuario> usuarios = new LinkedHashMap<>();
+
+    /** Locales registrados, indexados por su dirección (clave natural, C01). */
+    private final Map<Direccion, Local> locales = new LinkedHashMap<>();
+
+    /** Reviews registradas; su identidad es cliente, local y fecha de visita (C05). */
+    private final Set<Review> reviews = new LinkedHashSet<>();
+
+    /** Contestaciones registradas, indexadas por la review que contestan (C07). */
+    private final Map<Review, Contestacion> contestaciones = new LinkedHashMap<>();
+
+    /** Reservas registradas; su identidad es el id que genera {@link Reserva}. */
+    private final Set<Reserva> reservas = new LinkedHashSet<>();
+
+    /** Política aplicada en las bajas de entidades con dependientes. */
+    private PoliticaBorrado politicaBorrado;
+
+    /** Motivo del último rechazo, o {@code null} si la última operación tuvo éxito. */
+    private String ultimoError;
+
+    /**
+     * Crea un sistema vacío que bloquea las bajas de entidades con
+     * dependientes ({@link PoliticaBorrado#BLOQUEAR}).
+     */
+    public BusinessSystem() {
+        this(PoliticaBorrado.BLOQUEAR);
+    }
+
+    /**
+     * Crea un sistema vacío con la política de borrado indicada.
+     *
+     * @param politicaBorrado política que se aplicará en las bajas de
+     *                        entidades con dependientes
+     * @throws NullPointerException si {@code politicaBorrado} es {@code null}
+     */
+    public BusinessSystem(PoliticaBorrado politicaBorrado) {
+        setPoliticaBorrado(politicaBorrado);
+    }
+
+    /**
+     * Devuelve la política que se aplica en las bajas de entidades con
+     * dependientes.
+     *
+     * @return la política de borrado actual
+     */
+    public PoliticaBorrado getPoliticaBorrado() {
+        return politicaBorrado;
+    }
+
+    /**
+     * Cambia la política que se aplica en las bajas de entidades con
+     * dependientes. Solo afecta a las bajas posteriores.
+     *
+     * @param politicaBorrado nueva política de borrado
+     * @throws NullPointerException si {@code politicaBorrado} es {@code null}
+     */
+    public void setPoliticaBorrado(PoliticaBorrado politicaBorrado) {
+        if (politicaBorrado == null) {
+            throw new NullPointerException("Hay que indicar una política de borrado.");
+        }
+        this.politicaBorrado = politicaBorrado;
+    }
+
+    /**
+     * Devuelve el motivo por el que se rechazó la última operación, en
+     * lenguaje natural y con los datos concretos del caso.
+     *
+     * @return el mensaje del último rechazo, o {@code null} si la última
+     *         operación terminó con éxito o todavía no se ha hecho ninguna
+     */
+    public String getUltimoError() {
+        return ultimoError;
+    }
+
+    /**
+     * Marca la operación en curso como correcta, borrando el último error.
+     */
+    private void operacionCorrecta() {
+        ultimoError = null;
+    }
+
+    /**
+     * Marca la operación en curso como rechazada, guardando el motivo.
+     *
+     * @param e excepción con el motivo del rechazo en lenguaje natural
+     */
+    private void operacionRechazada(DominioException e) {
+        ultimoError = e.getMessage();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #24
+     */
+    @Override
+    public boolean nuevoUsuario(Usuario u) {
+        throw new UnsupportedOperationException("Pendiente: #24");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #24
+     */
+    @Override
+    public boolean eliminaUsuario(Usuario u) {
+        throw new UnsupportedOperationException("Pendiente: #24");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #24
+     */
+    @Override
+    public boolean modificaUsuario(Usuario u, Usuario nuevoU) {
+        throw new UnsupportedOperationException("Pendiente: #24");
+    }
+
+    /**
+     * Comprueba si existe algún usuario registrado con ese nick.
+     *
+     * @param nick nick que se busca
+     * @return {@code true} si existe un usuario con ese nick
+     * @throws UnsupportedOperationException pendiente de implementar en #24
+     */
+    @Override
+    public boolean existeNick(String nick) {
+        throw new UnsupportedOperationException("Pendiente: #24");
+    }
+
+    /**
+     * Recupera el usuario asociado a un nick, en caso de que exista.
+     *
+     * @param nick nick del usuario que se busca
+     * @return el usuario con ese nick, o {@code null} si
+     *         {@link #existeNick(String)} es falso
+     * @throws UnsupportedOperationException pendiente de implementar en #24
+     */
+    @Override
+    public Usuario obtenerUsuario(String nick) {
+        throw new UnsupportedOperationException("Pendiente: #24");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #27
+     */
+    @Override
+    public boolean nuevaReview(Review r) {
+        throw new UnsupportedOperationException("Pendiente: #27");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #27
+     */
+    @Override
+    public boolean eliminaReview(Review r) {
+        throw new UnsupportedOperationException("Pendiente: #27");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #27
+     */
+    @Override
+    public boolean existeRewiew(Usuario u, Local l, LocalDate ld) {
+        throw new UnsupportedOperationException("Pendiente: #27");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #27
+     */
+    @Override
+    public Review[] verReviews(Local l) {
+        throw new UnsupportedOperationException("Pendiente: #27");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #28
+     */
+    @Override
+    public boolean nuevaContestacion(Contestacion c, Review r) {
+        throw new UnsupportedOperationException("Pendiente: #28");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #28
+     */
+    @Override
+    public boolean tieneContestacion(Review r) {
+        throw new UnsupportedOperationException("Pendiente: #28");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #28
+     */
+    @Override
+    public Contestacion obtenerContestacion(Review r) {
+        throw new UnsupportedOperationException("Pendiente: #28");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #28
+     */
+    @Override
+    public boolean eliminaContestacion(Contestacion c) {
+        throw new UnsupportedOperationException("Pendiente: #28");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #28
+     */
+    @Override
+    public boolean eliminaContestacion(Review r) {
+        throw new UnsupportedOperationException("Pendiente: #28");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #25
+     */
+    @Override
+    public boolean nuevoLocal(Local l) {
+        throw new UnsupportedOperationException("Pendiente: #25");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #25
+     */
+    @Override
+    public boolean eliminarLocal(Local l) {
+        throw new UnsupportedOperationException("Pendiente: #25");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #25
+     */
+    @Override
+    public Local obtenerLocal(Direccion d) {
+        throw new UnsupportedOperationException("Pendiente: #25");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #25
+     */
+    @Override
+    public boolean asociarLocal(Local l, Propietario p) {
+        throw new UnsupportedOperationException("Pendiente: #25");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #25
+     */
+    @Override
+    public boolean desasociarLocal(Local l, Propietario p) {
+        throw new UnsupportedOperationException("Pendiente: #25");
+    }
+
+    /**
+     * Reemplaza en el sistema un local registrado por otro.
+     *
+     * @param viejoL local registrado que se quiere reemplazar
+     * @param nuevoL local que lo sustituye
+     * @return {@code true} si y solo si la operación se completó
+     * @throws UnsupportedOperationException pendiente de implementar en #25
+     */
+    @Override
+    public boolean actualizarLocal(Local viejoL, Local nuevoL) {
+        throw new UnsupportedOperationException("Pendiente: #25");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #29
+     */
+    @Override
+    public boolean nuevaReserva(Cliente c, Reservable r, LocalDate ld, LocalTime lt) {
+        throw new UnsupportedOperationException("Pendiente: #29");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #29
+     */
+    @Override
+    public Reserva[] obtenerReservas(Cliente c) {
+        throw new UnsupportedOperationException("Pendiente: #29");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #29
+     */
+    @Override
+    public Reserva[] obtenerReservas(Reservable r) {
+        throw new UnsupportedOperationException("Pendiente: #29");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #29
+     */
+    @Override
+    public Reserva[] obtenerReservas(LocalDate ld) {
+        throw new UnsupportedOperationException("Pendiente: #29");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #29
+     */
+    @Override
+    public boolean eliminarReserva(Reserva r) {
+        throw new UnsupportedOperationException("Pendiente: #29");
+    }
+
+    /**
+     * Lista los locales de cualquier tipo de una localidad y provincia.
+     *
+     * @param ciudad    localidad de interés
+     * @param provincia provincia en la que se encuentra la localidad
+     * @return los locales encontrados, potencialmente de longitud 0
+     * @throws UnsupportedOperationException pendiente de implementar en #26
+     */
+    @Override
+    public Local[] listarLocales(String ciudad, String provincia) {
+        throw new UnsupportedOperationException("Pendiente: #26");
+    }
+
+    /**
+     * Lista los bares de una localidad y provincia.
+     *
+     * @param ciudad    localidad de interés
+     * @param provincia provincia en la que se encuentra la localidad
+     * @return los bares encontrados, potencialmente de longitud 0
+     * @throws UnsupportedOperationException pendiente de implementar en #26
+     */
+    @Override
+    public Bar[] listarBares(String ciudad, String provincia) {
+        throw new UnsupportedOperationException("Pendiente: #26");
+    }
+
+    /**
+     * Lista los restaurantes de una localidad y provincia.
+     *
+     * @param ciudad    localidad de interés
+     * @param provincia provincia en la que se encuentra la localidad
+     * @return los restaurantes encontrados, potencialmente de longitud 0
+     * @throws UnsupportedOperationException pendiente de implementar en #26
+     */
+    @Override
+    public Restaurante[] listarRestaurantes(String ciudad, String provincia) {
+        throw new UnsupportedOperationException("Pendiente: #26");
+    }
+
+    /**
+     * Lista los pubs de una localidad y provincia.
+     *
+     * @param ciudad    localidad de interés
+     * @param provincia provincia en la que se encuentra la localidad
+     * @return los pubs encontrados, potencialmente de longitud 0
+     * @throws UnsupportedOperationException pendiente de implementar en #26
+     */
+    @Override
+    public Pub[] listarPubs(String ciudad, String provincia) {
+        throw new UnsupportedOperationException("Pendiente: #26");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #30
+     */
+    @Override
+    public float obtenerValoracionMedia(Local l) {
+        throw new UnsupportedOperationException("Pendiente: #30");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #30
+     */
+    @Override
+    public float obtenerValoracionMedia(Propietario p) {
+        throw new UnsupportedOperationException("Pendiente: #30");
+    }
+
+    /**
+     * Obtiene la valoración media de un local contando solo las reviews
+     * de clientes cuya edad estaba en el rango indicado.
+     *
+     * @param l         local de interés
+     * @param edadEntre edad mínima del rango (incluida)
+     * @param edadHasta edad máxima del rango (incluida)
+     * @return la valoración media de esas reviews, 0 si no hay ninguna o
+     *         -1 si el local no existe
+     * @throws UnsupportedOperationException pendiente de implementar en #30
+     */
+    @Override
+    public float obtenerValoracionMedia(Local l, int edadEntre, int edadHasta) {
+        throw new UnsupportedOperationException("Pendiente: #30");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #30
+     */
+    @Override
+    public Local[] obtenerLocalesOrdenados(String ciudad, String provincia) {
+        throw new UnsupportedOperationException("Pendiente: #30");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #30
+     */
+    @Override
+    public Local[] obtenerLocalesOrdenados(String provincia) {
+        throw new UnsupportedOperationException("Pendiente: #30");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #30
+     */
+    @Override
+    public Bar[] obtenerBaresOrdenados(String ciudad, String provincia) {
+        throw new UnsupportedOperationException("Pendiente: #30");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #30
+     */
+    @Override
+    public Restaurante[] obtenerRestaurantesOrdenados(String ciudad, String provincia) {
+        throw new UnsupportedOperationException("Pendiente: #30");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws UnsupportedOperationException pendiente de implementar en #30
+     */
+    @Override
+    public Pub[] obtenerPubOrdenados(String ciudad, String provincia) {
+        throw new UnsupportedOperationException("Pendiente: #30");
+    }
+}

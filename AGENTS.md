@@ -99,6 +99,7 @@ Antes de cerrar cualquier tarea, revisar el cambio contra esta tabla.
 ## 6. Convenciones de código
 
 - Javadoc en español en **todas** las clases, interfaces, constructores y métodos públicos/protegidos: descripción, restricciones de dominio, `@param`, `@return`, `@throws`. Mantener `package-info.java` en cada paquete.
+- **Prohibidos los comentarios narrativos que no sean Javadoc** (`//` o `/* */`): nada de separadores de sección, referencias a issues (`#N`), notas de tareas pendientes ni explicaciones de lo que hace el código. Lo que haya que explicar va en el Javadoc de la clase o del método. Única excepción: los comentarios del `Tester` que explican cómo se comprueba cada suceso S1–S10, que exige el guion. Las cabeceras de `LeisureOffice` y `LookupService` se mantienen porque se copian sin alterar.
 - Separación estricta de capas: el modelo no conoce `BusinessSystem`; el Tester solo usa la API del sistema.
 - Invariantes intrínsecas (longitudes, rangos, edad) en el modelo; invariantes de conjunto (unicidad, cardinalidades, existencia) en `BusinessSystem`.
 - Solo biblioteca estándar de Java; sin dependencias externas.
