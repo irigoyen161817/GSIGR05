@@ -7,7 +7,7 @@ import java.util.Objects;
  * Reseña de un {@link Cliente} sobre un {@link Local}.
  *
  * <p>Tiene una valoración numérica entre {@value #VALORACION_MINIMA} y
- * {@value #VALORACION_MAXIMA} estrellas, un comentario opcional de hasta
+ * {@value #VALORACION_MAXIMA} estrellas, un comentario obligatorio de hasta
  * {@value #MAX_CARACTERES_COMENTARIO} caracteres, la fecha de la visita y
  * la fecha de creación de la reseña, asignada automáticamente (C05,
  * C08).</p>
@@ -20,9 +20,12 @@ import java.util.Objects;
  * reviews son iguales exactamente cuando representan la misma visita,
  * que es la situación que debe rechazarse.</p>
  *
- * <p>La fecha de visita no puede ser posterior a la fecha actual (C05,
- * C08): no se puede valorar una visita que todavía no ha ocurrido, ya
- * que debe ser anterior o igual a la fecha de creación de la review.</p>
+ * <p>Decisiones de interpretación (no están explícitas en C05): el
+ * comentario es obligatorio, por ser la opción más restrictiva, y la fecha
+ * de visita no puede ser posterior a la fecha actual, ya que no se puede
+ * valorar una visita que todavía no ha ocurrido. Esta segunda no es una
+ * regla de negocio, sino una fecha mal formada, por lo que se rechaza con
+ * {@link IllegalArgumentException} y no con {@link DominioException}.</p>
  */
 public final class Review {
 
@@ -51,34 +54,48 @@ public final class Review {
      * @param valoracion  valoración en estrellas, entre
      *                    {@value #VALORACION_MINIMA} y
      *                    {@value #VALORACION_MAXIMA}
-     * @param comentario  comentario opcional (puede ser {@code null}),
-     *                    de hasta {@value #MAX_CARACTERES_COMENTARIO}
-     *                    caracteres
+     * @param comentario  comentario obligatorio, de hasta
+     *                    {@value #MAX_CARACTERES_COMENTARIO} caracteres
      * @param fechaVisita fecha en la que se realizó la visita al local
-     * @throws NullPointerException si el cliente, el local o la fecha de
-     *         visita son {@code null}
-     * @throws DominioException si la valoración está fuera de rango, si el
-     *         comentario supera {@value #MAX_CARACTERES_COMENTARIO}
-     *         caracteres o si la fecha de visita es posterior a hoy (C05)
+     * @throws NullPointerException si el cliente, el local, el comentario o
+     *         la fecha de visita son {@code null}
+     * @throws IllegalArgumentException si la fecha de visita es posterior a
+     *         hoy, porque no se puede valorar una visita que todavía no ha
+     *         ocurrido
+     * @throws DominioException si la valoración no está entre
+     *         {@value #VALORACION_MINIMA} y {@value #VALORACION_MAXIMA}
+     *         estrellas o si el comentario supera
+     *         {@value #MAX_CARACTERES_COMENTARIO} caracteres (C05)
      */
     public Review(Cliente cliente, Local local, int valoracion, String comentario,
             LocalDate fechaVisita) throws DominioException {
-        Objects.requireNonNull(cliente, "La review debe tener un cliente autor.");
-        Objects.requireNonNull(local, "La review debe tener un local valorado.");
-        Objects.requireNonNull(fechaVisita, "La fecha de visita es obligatoria.");
+        if (cliente == null) {
+            throw new NullPointerException("La review debe tener un cliente autor.");
+        }
+        if (local == null) {
+            throw new NullPointerException("La review debe tener un local valorado.");
+        }
+        if (comentario == null) {
+            throw new NullPointerException("La review de \"" + cliente.getNick() + "\" sobre \""
+                    + local.getNombre() + "\" debe llevar un comentario.");
+        }
+        if (fechaVisita == null) {
+            throw new NullPointerException("La review debe tener una fecha de visita.");
+        }
+        LocalDate hoy = LocalDate.now();
         if (valoracion < VALORACION_MINIMA || valoracion > VALORACION_MAXIMA) {
-            throw new DominioException("La review de " + cliente.getNick() + " sobre \"" + local.getNombre()
+            throw new DominioException("La review de \"" + cliente.getNick() + "\" sobre \"" + local.getNombre()
                     + "\" tiene " + valoracion + " estrellas, pero la valoración debe estar entre "
                     + VALORACION_MINIMA + " y " + VALORACION_MAXIMA + ".");
         }
-        if (comentario != null && comentario.length() > MAX_CARACTERES_COMENTARIO) {
-            throw new DominioException("El comentario de la review de " + cliente.getNick() + " tiene "
-                    + comentario.length() + " caracteres y el máximo permitido es "
-                    + MAX_CARACTERES_COMENTARIO + ".");
+        if (comentario.length() > MAX_CARACTERES_COMENTARIO) {
+            throw new DominioException("El comentario de la review de \"" + cliente.getNick() + "\" sobre \""
+                    + local.getNombre() + "\" tiene " + comentario.length()
+                    + " caracteres y el máximo permitido es " + MAX_CARACTERES_COMENTARIO + ".");
         }
-        if (fechaVisita.isAfter(LocalDate.now())) {
-            throw new DominioException(cliente.getNick() + " no puede valorar una visita a \""
-                    + local.getNombre() + "\" del " + fechaVisita + " porque esa fecha todavía no ha llegado.");
+        if (fechaVisita.isAfter(hoy)) {
+            throw new IllegalArgumentException("La visita a \"" + local.getNombre() + "\" del " + fechaVisita
+                    + " todavía no ha ocurrido, así que \"" + cliente.getNick() + "\" no puede valorarla.");
         }
 
         this.cliente = cliente;
@@ -86,7 +103,7 @@ public final class Review {
         this.valoracion = valoracion;
         this.comentario = comentario;
         this.fechaVisita = fechaVisita;
-        this.fechaCreacion = LocalDate.now();
+        this.fechaCreacion = hoy;
     }
 
     /**
@@ -120,7 +137,7 @@ public final class Review {
     /**
      * Devuelve el comentario de la review.
      *
-     * @return el comentario, o {@code null} si no tiene
+     * @return el comentario, nunca {@code null}
      */
     public String getComentario() {
         return comentario;
