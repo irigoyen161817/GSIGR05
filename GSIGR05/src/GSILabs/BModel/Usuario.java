@@ -52,7 +52,7 @@ public abstract class Usuario {
         Objects.requireNonNull(nick, "El nick es obligatorio.");
         Objects.requireNonNull(contrasena, "La contraseña es obligatoria.");
         Objects.requireNonNull(fechaNacimiento, "La fecha de nacimiento es obligatoria.");
-        if (contrasena.isEmpty()) {
+        if (contrasena.isBlank()) {
             throw new IllegalArgumentException("La contraseña no puede estar vacía.");
         }
         if (nick.strip().length() < LONGITUD_MINIMA_NICK) {
