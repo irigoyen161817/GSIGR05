@@ -411,9 +411,7 @@ public class BusinessSystem implements LeisureOffice, LookupService {
      * del mismo cliente sobre el mismo local con la misma fecha de
      * visita.</p>
      *
-     * @throws NullPointerException  si {@code r} es {@code null}
-     * @throws IllegalStateException si {@code r} ya está vinculada sin estar
-     *                               registrada en el sistema
+     * @throws NullPointerException si {@code r} es {@code null}
      */
     @Override
     public boolean nuevaReview(Review r) {
