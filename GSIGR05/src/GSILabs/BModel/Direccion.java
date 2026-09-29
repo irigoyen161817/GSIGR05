@@ -127,7 +127,23 @@ public final class Direccion {
             throw new NullPointerException("Hay que indicar la provincia.");
         }
         return clave(this.localidad).equals(clave(compactar(localidad)))
-                && clave(this.provincia).equals(clave(compactar(provincia)));
+                && estaEnProvincia(provincia);
+    }
+
+    /**
+     * Comprueba si la dirección está en la provincia indicada, sea cual sea
+     * su localidad, con el mismo criterio de comparación que
+     * {@link #estaEn(String, String)}.
+     *
+     * @param provincia provincia que se busca
+     * @return {@code true} si la dirección está en esa provincia
+     * @throws NullPointerException si {@code provincia} es {@code null}
+     */
+    public boolean estaEnProvincia(String provincia) {
+        if (provincia == null) {
+            throw new NullPointerException("Hay que indicar la provincia.");
+        }
+        return clave(this.provincia).equals(clave(compactar(provincia)));
     }
 
     /**
