@@ -154,7 +154,7 @@ public class Propietario extends Usuario {
 
         if (politica == PoliticaBorrado.BLOQUEAR
                 && (!contestaciones.isEmpty() || !localesExclusivos.isEmpty())) {
-            throw new DominioException("No se puede eliminar al dueño " + getNick() + " porque tiene "
+            throw new DominioException("No se puede eliminar al propietario \"" + getNick() + "\" porque tiene "
                     + contestaciones.size() + " contestación(es) y es el único dueño de "
                     + localesExclusivos.size() + " local(es); bórralos antes o elimínalo en cascada.");
         }

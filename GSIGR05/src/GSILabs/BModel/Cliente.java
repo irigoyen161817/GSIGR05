@@ -143,7 +143,7 @@ public class Cliente extends Usuario {
             throw new NullPointerException("La política de borrado es obligatoria.");
         }
         if (politica == PoliticaBorrado.BLOQUEAR && (!reviews.isEmpty() || !reservas.isEmpty())) {
-            throw new DominioException("No se puede eliminar al cliente " + getNick() + " porque tiene "
+            throw new DominioException("No se puede eliminar al cliente \"" + getNick() + "\" porque tiene "
                     + reviews.size() + " review(s) y " + reservas.size() + " reserva(s); "
                     + "bórralas antes o elimínalo en cascada.");
         }
