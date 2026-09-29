@@ -52,7 +52,9 @@ public final class Direccion {
     }
 
     private static String normalizar(String valor, String campo) {
-        Objects.requireNonNull(valor, campo + " de la dirección es obligatorio.");
+        if (valor == null) {
+            throw new NullPointerException(campo + " de la dirección es obligatorio.");
+        }
         if (valor.isBlank()) {
             throw new IllegalArgumentException(campo + " de la dirección no puede estar en blanco.");
         }

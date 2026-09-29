@@ -2,7 +2,6 @@ package GSILabs.BModel;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
-import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -86,8 +85,12 @@ public abstract class Local {
      */
     protected Local(String nombre, Direccion direccion, String descripcion, Propietario primerDueño)
             throws DominioException {
-        Objects.requireNonNull(nombre, "El nombre del local es obligatorio.");
-        Objects.requireNonNull(direccion, "La dirección del local es obligatoria.");
+        if (nombre == null) {
+            throw new NullPointerException("El nombre del local es obligatorio.");
+        }
+        if (direccion == null) {
+            throw new NullPointerException("La dirección del local es obligatoria.");
+        }
         if (nombre.isBlank()) {
             throw new IllegalArgumentException("El nombre del local no puede estar en blanco.");
         }
@@ -217,7 +220,9 @@ public abstract class Local {
      *         dueños (C06)
      */
     public void añadirDueño(Propietario dueño) throws DominioException {
-        Objects.requireNonNull(dueño, "El dueño es obligatorio.");
+        if (dueño == null) {
+            throw new NullPointerException("El dueño es obligatorio.");
+        }
         if (dueños.contains(dueño)) {
             return;
         }
