@@ -544,9 +544,13 @@ public class BusinessSystem implements LeisureOffice, LookupService {
      * inexistente.
      *
      * @param r review que se busca
-     * @throws DominioException si {@code r} no es la review registrada
+     * @throws DominioException si su autor no es el cliente registrado, su
+     *         local no es el registrado en su dirección o {@code r} no es la
+     *         review registrada
      */
     private void comprobarReviewRegistrada(Review r) throws DominioException {
+        comprobarClienteRegistrado(r.getCliente());
+        comprobarLocalRegistrado(r.getLocal());
         if (!r.isVinculada() || !reviews.contains(r)) {
             throw new DominioException("La review de \"" + r.getCliente().getNick() + "\" sobre \""
                     + r.getLocal().getNombre() + "\" del " + r.getFechaVisita()
