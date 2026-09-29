@@ -17,6 +17,7 @@ import GSILabs.BModel.Usuario;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -39,8 +40,9 @@ import java.util.function.IntFunction;
  * las reglas que dependen del conjunto de entidades registradas: nick
  * único (C03), una sola dirección por local (C01), entre 1 y 3 dueños por
  * local (C06), una review por visita (C05), una contestación por review
- * hecha por un dueño del local (C07) y que no se reserve en locales que no
- * están dados de alta (C09).</p>
+ * hecha por un dueño del local (C07) y, en las reservas, que el local esté
+ * dado de alta, que la fecha y hora sean futuras y que el cliente no
+ * reserve dos veces en el mismo local el mismo día (C09).</p>
  *
  * <p><b>Control de errores.</b> Los métodos de {@link LeisureOffice} y
  * {@link LookupService} devuelven {@code boolean}, {@code null} o un valor
@@ -1099,7 +1101,7 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         }
         List<Reserva> delDia = new ArrayList<>();
         for (Reserva reserva : reservas) {
-            if (reserva.getFechaHora().toLocalDate().equals(ld)) {
+            if (esDelDia(reserva, ld)) {
                 delDia.add(reserva);
             }
         }
@@ -1146,7 +1148,7 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     private static void comprobarFechaFutura(Local local, LocalDateTime fechaHora) throws DominioException {
         if (!fechaHora.isAfter(LocalDateTime.now())) {
             throw new DominioException("No se puede reservar en \"" + local.getNombre() + "\" para el "
-                    + fechaHora.toLocalDate() + " a las " + fechaHora.toLocalTime()
+                    + fechaHora.toLocalDate() + " a las " + fechaHora.toLocalTime().truncatedTo(ChronoUnit.MINUTES)
                     + " porque las reservas tienen que ser para una fecha y hora futuras.");
         }
     }
@@ -1163,12 +1165,23 @@ public class BusinessSystem implements LeisureOffice, LookupService {
      */
     private static void comprobarDiaSinReserva(Cliente c, Local local, LocalDate dia) throws DominioException {
         for (Reserva reserva : c.getReservas()) {
-            if (reserva.getReservable().equals(local) && reserva.getFechaHora().toLocalDate().equals(dia)) {
+            if (reserva.getReservable() == local && esDelDia(reserva, dia)) {
                 throw new DominioException("\"" + c.getNick() + "\" ya tiene una reserva en \""
                         + local.getNombre() + "\" el " + dia
                         + " y no puede tener dos reservas en el mismo local el mismo día.");
             }
         }
+    }
+
+    /**
+     * Indica si la reserva es para el día indicado, sea cual sea su hora.
+     *
+     * @param reserva reserva que se consulta
+     * @param dia     día que se busca
+     * @return {@code true} si la reserva es para ese día
+     */
+    private static boolean esDelDia(Reserva reserva, LocalDate dia) {
+        return reserva.getFechaHora().toLocalDate().equals(dia);
     }
 
     /**
