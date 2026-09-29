@@ -185,11 +185,24 @@ public final class Review {
                 && fechaVisita.equals(otra.fechaVisita);
     }
 
+    /**
+     * Devuelve el código hash de la review, derivado del cliente, el local
+     * y la fecha de visita para ser coherente con {@link #equals(Object)}.
+     *
+     * @return el código hash de la terna cliente, local y fecha de visita
+     */
     @Override
     public int hashCode() {
         return Objects.hash(cliente, local, fechaVisita);
     }
 
+    /**
+     * Devuelve una representación en texto de la review con el nick del
+     * cliente, el nombre del local, la valoración y las fechas de visita y
+     * de creación.
+     *
+     * @return la descripción de la review
+     */
     @Override
     public String toString() {
         return "Review{cliente=" + cliente.getNick() + ", local=" + local.getNombre()
