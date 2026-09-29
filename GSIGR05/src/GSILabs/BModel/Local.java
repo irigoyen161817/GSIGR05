@@ -8,7 +8,7 @@ import java.util.Set;
 /**
  * Clase base abstracta para los locales de ocio del sistema.
  *
- * <p>Un local tiene un nombre, una {@link Dirección} y una descripción
+ * <p>Un local tiene un nombre, una {@link Direccion} y una descripción
  * opcional de hasta {@value #MAX_CARACTERES_DESCRIPCION} caracteres
  * (C01). La unicidad de la dirección entre distintos locales no la
  * comprueba esta clase, sino {@code GSILabs.BSystem.BusinessSystem}, que
@@ -48,7 +48,7 @@ public abstract class Local {
     public static final int MAX_DUENOS = 3;
 
     private final String nombre;
-    private final Dirección direccion;
+    private final Direccion direccion;
     private String descripcion;
     private final Set<Propietario> dueños = new LinkedHashSet<>();
     private boolean vinculado;
@@ -76,7 +76,7 @@ public abstract class Local {
      *         la descripción supera {@value #MAX_CARACTERES_DESCRIPCION}
      *         caracteres (C01)
      */
-    protected Local(String nombre, Dirección direccion, String descripcion, Propietario primerDueño)
+    protected Local(String nombre, Direccion direccion, String descripcion, Propietario primerDueño)
             throws DominioException {
         Objects.requireNonNull(nombre, "El nombre del local es obligatorio.");
         Objects.requireNonNull(direccion, "La dirección del local es obligatoria.");
@@ -117,7 +117,7 @@ public abstract class Local {
      *
      * @return la dirección
      */
-    public Dirección getDireccion() {
+    public Direccion getDireccion() {
         return direccion;
     }
 
@@ -264,7 +264,7 @@ public abstract class Local {
     }
 
     /**
-     * Dos locales son iguales si tienen la misma {@link Dirección},
+     * Dos locales son iguales si tienen la misma {@link Direccion},
      * independientemente de su tipo concreto (C01): dos instancias de
      * subclases distintas con la misma dirección se consideran el mismo
      * local.
