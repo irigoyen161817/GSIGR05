@@ -19,6 +19,10 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -82,9 +86,23 @@ import java.util.function.IntFunction;
  * ({@link #BusinessSystem(PoliticaBorrado)}) y se puede cambiar después con
  * {@link #setPoliticaBorrado(PoliticaBorrado)}.</p>
  *
- * <p><b>Estado de la implementación.</b> Los métodos que aún no están
- * implementados lanzan {@link UnsupportedOperationException} indicando la
- * issue del repositorio que los implementará.</p>
+ * <p><b>Consultas de {@link LookupService}.</b> Resuelven así las
+ * ambigüedades del interfaz:</p>
+ * <ul>
+ *   <li>La valoración media es la media aritmética de las estrellas de las
+ *       reviews registradas; si no hay ninguna, vale 0.</li>
+ *   <li>Cuando el local o el propietario no existen se devuelve -1, aunque
+ *       el Javadoc de
+ *       {@link LookupService#obtenerValoracionMedia(Local, int, int)}
+ *       mencione también {@code null}, porque el tipo devuelto es
+ *       {@code float}.</li>
+ *   <li>La edad del autor "en el momento de la valoración" se calcula en la
+ *       fecha de creación de la review (C08), que es cuando el cliente
+ *       valoró el local, y no en la fecha de la visita.</li>
+ *   <li>Los listados ordenados van de mayor a menor valoración media; los
+ *       locales empatados, incluidos los que no tienen reviews (que valen
+ *       0), conservan el orden en que se dieron de alta.</li>
+ * </ul>
  */
 public class BusinessSystem implements LeisureOffice, LookupService {
 
@@ -1431,86 +1449,217 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #30
+     * <p>Es la media aritmética de las estrellas de todas las reviews
+     * publicadas sobre el local. Un {@code l} nulo o que no es el local
+     * registrado en su dirección se considera inexistente y el resultado es
+     * -1.</p>
      */
     @Override
     public float obtenerValoracionMedia(Local l) {
-        throw new UnsupportedOperationException("Pendiente: #30");
+        if (l == null || !esLocalRegistrado(l)) {
+            return -1;
+        }
+        return media(l.getReviews());
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #30
+     * <p>Es la media aritmética de las estrellas de todas las reviews de
+     * todos los locales de los que es dueño actualmente, de modo que cada
+     * review pesa lo mismo, sea cual sea el número de reviews de su local.
+     * Un {@code p} nulo o que no es el {@link Propietario} registrado con su
+     * nick se considera inexistente y el resultado es -1.</p>
      */
     @Override
     public float obtenerValoracionMedia(Propietario p) {
-        throw new UnsupportedOperationException("Pendiente: #30");
+        if (p == null || obtenerUsuario(p.getNick()) != p) {
+            return -1;
+        }
+        List<Review> deSusLocales = new ArrayList<>();
+        for (Local local : p.getLocales()) {
+            deSusLocales.addAll(local.getReviews());
+        }
+        return media(deSusLocales);
     }
 
     /**
-     * Obtiene la valoración media de un local contando solo las reviews
-     * de clientes cuya edad estaba en el rango indicado.
+     * Obtiene la valoración media de un local contando solo las reviews de
+     * clientes cuya edad, en el momento de la valoración, estaba en el rango
+     * indicado.
+     *
+     * <p>La edad del autor se calcula en años cumplidos en la fecha de
+     * creación de la review (C08), que es cuando valoró el local; no en la
+     * fecha de la visita ni en la fecha actual. Aunque el Javadoc del
+     * interfaz menciona {@code null} para un local inexistente, el tipo
+     * devuelto es {@code float}, así que se devuelve -1. Un {@code l} nulo o
+     * que no es el local registrado en su dirección se considera
+     * inexistente.</p>
      *
      * @param l         local de interés
      * @param edadEntre edad mínima del rango (incluida)
      * @param edadHasta edad máxima del rango (incluida)
-     * @return la valoración media de esas reviews, 0 si no hay ninguna o
-     *         -1 si el local no existe
-     * @throws UnsupportedOperationException pendiente de implementar en #30
+     * @return la media aritmética de las estrellas de esas reviews, 0 si no
+     *         hay ninguna o -1 si el local no existe
+     * @throws IllegalArgumentException si {@code edadEntre} es mayor que
+     *                                  {@code edadHasta}
      */
     @Override
     public float obtenerValoracionMedia(Local l, int edadEntre, int edadHasta) {
-        throw new UnsupportedOperationException("Pendiente: #30");
+        if (edadEntre > edadHasta) {
+            throw new IllegalArgumentException("El rango de edad de " + edadEntre + " a " + edadHasta
+                    + " años está vacío: la edad mínima no puede ser mayor que la máxima.");
+        }
+        if (l == null || !esLocalRegistrado(l)) {
+            return -1;
+        }
+        List<Review> delRango = new ArrayList<>();
+        for (Review review : l.getReviews()) {
+            long edad = ChronoUnit.YEARS.between(review.getCliente().getFechaNacimiento(),
+                    review.getFechaCreacion());
+            if (edad >= edadEntre && edad <= edadHasta) {
+                delRango.add(review);
+            }
+        }
+        return media(delRango);
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #30
+     * <p>Selecciona los mismos locales que
+     * {@link #listarLocales(String, String)}. Los locales con la misma
+     * valoración media, incluidos los que no tienen reviews, conservan el
+     * orden en que se dieron de alta. El resultado nunca es {@code null}.</p>
+     *
+     * @throws NullPointerException si {@code ciudad} o {@code provincia} son
+     *                              {@code null}
      */
     @Override
     public Local[] obtenerLocalesOrdenados(String ciudad, String provincia) {
-        throw new UnsupportedOperationException("Pendiente: #30");
+        return ordenarPorValoracion(listarLocales(ciudad, provincia));
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #30
+     * <p>Incluye los locales de cualquier localidad de la provincia, que se
+     * compara con {@link Direccion#estaEnProvincia(String)}: sin distinguir
+     * mayúsculas y minúsculas e ignorando espacios sobrantes. Los locales con
+     * la misma valoración media, incluidos los que no tienen reviews,
+     * conservan el orden en que se dieron de alta. El resultado nunca es
+     * {@code null}.</p>
+     *
+     * @throws NullPointerException si {@code provincia} es {@code null}
      */
     @Override
     public Local[] obtenerLocalesOrdenados(String provincia) {
-        throw new UnsupportedOperationException("Pendiente: #30");
+        if (provincia == null) {
+            throw new NullPointerException("Hay que indicar la provincia de los locales que se buscan.");
+        }
+        List<Local> encontrados = new ArrayList<>();
+        for (Local local : locales.values()) {
+            if (local.getDireccion().estaEnProvincia(provincia)) {
+                encontrados.add(local);
+            }
+        }
+        return ordenarPorValoracion(encontrados.toArray(new Local[0]));
     }
 
     /**
-     * {@inheritDoc}
+     * Obtiene los bares de una localidad y provincia ordenados por su
+     * valoración media, de mayor a menor. Los bares sin reviews valen 0.
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #30
+     * <p>Selecciona los mismos bares que
+     * {@link #listarBares(String, String)}. Los bares con la misma
+     * valoración media conservan el orden en que se dieron de alta.</p>
+     *
+     * @param ciudad    localidad de interés
+     * @param provincia provincia en la que se encuentra la localidad
+     * @return los bares ordenados por nota descendente, nunca {@code null} y
+     *         potencialmente de longitud 0
+     * @throws NullPointerException si {@code ciudad} o {@code provincia} son
+     *                              {@code null}
      */
     @Override
     public Bar[] obtenerBaresOrdenados(String ciudad, String provincia) {
-        throw new UnsupportedOperationException("Pendiente: #30");
+        return ordenarPorValoracion(listarBares(ciudad, provincia));
     }
 
     /**
-     * {@inheritDoc}
+     * Obtiene los restaurantes de una localidad y provincia ordenados por su
+     * valoración media, de mayor a menor. Los restaurantes sin reviews valen
+     * 0.
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #30
+     * <p>Selecciona los mismos restaurantes que
+     * {@link #listarRestaurantes(String, String)}. Los restaurantes con la
+     * misma valoración media conservan el orden en que se dieron de
+     * alta.</p>
+     *
+     * @param ciudad    localidad de interés
+     * @param provincia provincia en la que se encuentra la localidad
+     * @return los restaurantes ordenados por nota descendente, nunca
+     *         {@code null} y potencialmente de longitud 0
+     * @throws NullPointerException si {@code ciudad} o {@code provincia} son
+     *                              {@code null}
      */
     @Override
     public Restaurante[] obtenerRestaurantesOrdenados(String ciudad, String provincia) {
-        throw new UnsupportedOperationException("Pendiente: #30");
+        return ordenarPorValoracion(listarRestaurantes(ciudad, provincia));
     }
 
     /**
-     * {@inheritDoc}
+     * Obtiene los pubs de una localidad y provincia ordenados por su
+     * valoración media, de mayor a menor. Los pubs sin reviews valen 0.
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #30
+     * <p>Selecciona los mismos pubs que {@link #listarPubs(String, String)}.
+     * Los pubs con la misma valoración media conservan el orden en que se
+     * dieron de alta.</p>
+     *
+     * @param ciudad    localidad de interés
+     * @param provincia provincia en la que se encuentra la localidad
+     * @return los pubs ordenados por nota descendente, nunca {@code null} y
+     *         potencialmente de longitud 0
+     * @throws NullPointerException si {@code ciudad} o {@code provincia} son
+     *                              {@code null}
      */
     @Override
     public Pub[] obtenerPubOrdenados(String ciudad, String provincia) {
-        throw new UnsupportedOperationException("Pendiente: #30");
+        return ordenarPorValoracion(listarPubs(ciudad, provincia));
+    }
+
+    /**
+     * Calcula la media aritmética de las estrellas de unas reviews.
+     *
+     * @param reviews reviews que se promedian
+     * @return la valoración media, o 0 si no hay ninguna review
+     */
+    private static float media(Collection<Review> reviews) {
+        if (reviews.isEmpty()) {
+            return 0;
+        }
+        int estrellas = 0;
+        for (Review review : reviews) {
+            estrellas += review.getValoracion();
+        }
+        return (float) estrellas / reviews.size();
+    }
+
+    /**
+     * Ordena unos locales por su valoración media, de mayor a menor. La
+     * ordenación es estable, así que los locales empatados conservan el
+     * orden que tenían en el array, que es el de alta.
+     *
+     * @param <T>     tipo de local
+     * @param locales locales que se ordenan; el array se modifica
+     * @return el mismo array, ya ordenado
+     */
+    private static <T extends Local> T[] ordenarPorValoracion(T[] locales) {
+        Map<Local, Float> medias = new HashMap<>();
+        for (Local local : locales) {
+            medias.put(local, media(local.getReviews()));
+        }
+        Arrays.sort(locales, Comparator.comparing((T local) -> medias.get(local)).reversed());
+        return locales;
     }
 }
