@@ -269,11 +269,24 @@ public abstract class Local {
         return direccion.equals(otro.direccion);
     }
 
+    /**
+     * Devuelve el código hash del local, derivado de su {@link Direccion}
+     * para ser coherente con {@link #equals(Object)}.
+     *
+     * @return el código hash de la dirección del local
+     */
     @Override
     public final int hashCode() {
         return direccion.hashCode();
     }
 
+    /**
+     * Devuelve una representación legible del local: su tipo concreto, su
+     * nombre y su dirección, por ejemplo
+     * {@code Bar{nombre=Casa Pepe, direccion=Calle Mayor 12, Pamplona (Navarra)}}.
+     *
+     * @return el tipo, el nombre y la dirección del local
+     */
     @Override
     public String toString() {
         return getClass().getSimpleName() + "{nombre=" + nombre + ", direccion=" + direccion + "}";
