@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.util.Objects;
 
 /**
- * Respuesta de un {@link Dueño} a una {@link Review} sobre un local de su
+ * Respuesta de un {@link Propietario} a una {@link Review} sobre un local de su
  * propiedad.
  *
  * <p>Tiene un comentario breve de hasta
@@ -31,7 +31,7 @@ public final class Contestación {
     /** Longitud máxima permitida para el comentario. */
     public static final int MAX_CARACTERES_COMENTARIO = 500;
 
-    private final Dueño autor;
+    private final Propietario autor;
     private final Review review;
     private final String comentario;
     private final LocalDate fechaCreacion;
@@ -59,7 +59,7 @@ public final class Contestación {
      *         {@value #MAX_CARACTERES_COMENTARIO} caracteres o si
      *         {@code autor} no es dueño del local de {@code review} (C07)
      */
-    public Contestación(Dueño autor, Review review, String comentario) throws DominioException {
+    public Contestación(Propietario autor, Review review, String comentario) throws DominioException {
         Objects.requireNonNull(autor, "La contestación debe tener un autor.");
         Objects.requireNonNull(review, "La contestación debe estar asociada a una review.");
         Objects.requireNonNull(comentario, "El comentario de la contestación es obligatorio.");
@@ -79,7 +79,7 @@ public final class Contestación {
         this.fechaCreacion = LocalDate.now();
     }
 
-    private static void comprobarQueEsDueño(Dueño autor, Review review) throws DominioException {
+    private static void comprobarQueEsDueño(Propietario autor, Review review) throws DominioException {
         Local local = review.getLocal();
         if (!local.getDueños().contains(autor)) {
             throw new DominioException(autor.getNick() + " no puede contestar la review de "
@@ -93,7 +93,7 @@ public final class Contestación {
      *
      * @return el autor
      */
-    public Dueño getAutor() {
+    public Propietario getAutor() {
         return autor;
     }
 
