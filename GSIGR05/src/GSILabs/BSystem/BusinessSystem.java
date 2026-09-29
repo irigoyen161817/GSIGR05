@@ -138,7 +138,7 @@ public class BusinessSystem implements LeisureOffice, LookupService {
      * @param politicaBorrado nueva política de borrado
      * @throws NullPointerException si {@code politicaBorrado} es {@code null}
      */
-    public void setPoliticaBorrado(PoliticaBorrado politicaBorrado) {
+    public final void setPoliticaBorrado(PoliticaBorrado politicaBorrado) {
         if (politicaBorrado == null) {
             throw new NullPointerException("Hay que indicar una política de borrado.");
         }
@@ -201,8 +201,18 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     /**
      * {@inheritDoc}
      *
-     * <p>Devuelve {@code false} si no hay ningún usuario registrado con ese
-     * nick, y el motivo queda en {@link #getUltimoError()}.</p>
+     * <p>La baja aplica la {@link #getPoliticaBorrado() política de borrado}
+     * a los dependientes del usuario: las reviews y reservas de un
+     * {@link Cliente}, y las contestaciones y los locales de los que es
+     * único dueño un {@link Propietario}. Con
+     * {@link PoliticaBorrado#BLOQUEAR}, si tiene alguno, la baja se rechaza.
+     * Con {@link PoliticaBorrado#CASCADA}, se eliminan también esos
+     * dependientes, y el propietario se retira de los locales que comparte
+     * con otros dueños.</p>
+     *
+     * <p>Devuelve {@code false}, con el motivo en {@link #getUltimoError()},
+     * si no hay ningún usuario registrado con ese nick y ese perfil o si la
+     * política de borrado impide la baja.</p>
      *
      * @throws NullPointerException si {@code u} es {@code null}
      */
@@ -211,13 +221,19 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         if (u == null) {
             throw new NullPointerException("Hay que indicar el usuario que se quiere eliminar.");
         }
+        Set<Object> eliminados;
         try {
-            usuarioRegistrado(u);
+            Usuario registrado = usuarioRegistrado(u);
+            if (registrado instanceof Cliente cliente) {
+                eliminados = cliente.eliminar(politicaBorrado);
+            } else {
+                eliminados = ((Propietario) registrado).eliminar(politicaBorrado);
+            }
         } catch (DominioException e) {
             operacionRechazada(e);
             return false;
         }
-        usuarios.remove(u.getNick());
+        olvidar(eliminados);
         operacionCorrecta();
         return true;
     }
@@ -226,10 +242,20 @@ public class BusinessSystem implements LeisureOffice, LookupService {
      * {@inheritDoc}
      *
      * <p>Devuelve {@code false}, con el motivo en {@link #getUltimoError()},
-     * si {@code u} no está registrado, si {@code nuevoU} tiene otro perfil
-     * (un {@link Cliente} solo se sustituye por otro {@code Cliente} y un
-     * {@link Propietario} por otro {@code Propietario}) o si {@code nuevoU}
-     * cambia a un nick que ya usa otro usuario.</p>
+     * si {@code u} no está registrado con ese nick y ese perfil, si
+     * {@code nuevoU} tiene otro perfil (un {@link Cliente} solo se sustituye
+     * por otro {@code Cliente} y un {@link Propietario} por otro
+     * {@code Propietario}), si {@code nuevoU} cambia a un nick que ya usa
+     * otro usuario o si {@code u} tiene dependientes.</p>
+     *
+     * <p>Se consideran dependientes las reviews y reservas de un
+     * {@code Cliente} y los locales y contestaciones de un
+     * {@code Propietario}. Esta restricción no aparece en
+     * {@link LeisureOffice} y se aplica con cualquier política de borrado:
+     * las entidades del modelo son inmutables y guardan una referencia al
+     * usuario, así que tras la sustitución seguirían apuntando al usuario
+     * antiguo. Rehacerlas haría perder su fecha de creación (C08) o su
+     * identificador.</p>
      *
      * @throws NullPointerException si {@code u} o {@code nuevoU} son
      *                              {@code null}
@@ -249,6 +275,19 @@ public class BusinessSystem implements LeisureOffice, LookupService {
                         + "\" de " + registrado.getClass().getSimpleName() + " a "
                         + nuevoU.getClass().getSimpleName() + ".");
             }
+            if (registrado instanceof Cliente cliente
+                    && (!cliente.getReviews().isEmpty() || !cliente.getReservas().isEmpty())) {
+                throw new DominioException("No se puede modificar al cliente \"" + cliente.getNick()
+                        + "\" porque tiene " + cliente.getReviews().size() + " review(s) y "
+                        + cliente.getReservas().size() + " reserva(s) que seguirían apuntando a sus datos antiguos.");
+            }
+            if (registrado instanceof Propietario propietario
+                    && (!propietario.getLocales().isEmpty() || !propietario.getContestaciones().isEmpty())) {
+                throw new DominioException("No se puede modificar al propietario \"" + propietario.getNick()
+                        + "\" porque tiene " + propietario.getLocales().size() + " local(es) y "
+                        + propietario.getContestaciones().size()
+                        + " contestación(es) que seguirían apuntando a sus datos antiguos.");
+            }
             if (!registrado.equals(nuevoU)) {
                 comprobarNickLibre(nuevoU.getNick());
             }
@@ -265,7 +304,7 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     /**
      * Comprueba si existe algún usuario registrado con ese nick. Los
      * espacios al principio y al final se ignoran, igual que al crear el
-     * {@link Usuario}.
+     * {@link Usuario}, y se distinguen mayúsculas y minúsculas.
      *
      * @param nick nick que se busca
      * @return {@code true} si existe un usuario con ese nick
@@ -279,7 +318,7 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     /**
      * Recupera el usuario asociado a un nick, en caso de que exista. Los
      * espacios al principio y al final se ignoran, igual que al crear el
-     * {@link Usuario}.
+     * {@link Usuario}, y se distinguen mayúsculas y minúsculas.
      *
      * @param nick nick del usuario que se busca
      * @return el usuario con ese nick, o {@code null} si
@@ -298,27 +337,58 @@ public class BusinessSystem implements LeisureOffice, LookupService {
      * Comprueba que ningún usuario registrado use ya el nick indicado (C03).
      *
      * @param nick nick que se quiere usar
-     * @throws DominioException si el nick ya pertenece a otro usuario
+     * @throws DominioException si ya hay un usuario registrado con ese nick
      */
     private void comprobarNickLibre(String nick) throws DominioException {
         if (usuarios.containsKey(nick)) {
-            throw new DominioException("El nick \"" + nick + "\" ya está en uso por otro usuario.");
+            throw new DominioException("Ya hay un usuario registrado con el nick \"" + nick
+                    + "\" y no puede haber dos usuarios con el mismo nick.");
         }
     }
 
     /**
-     * Devuelve el usuario registrado con el mismo nick que {@code u}.
+     * Devuelve el usuario registrado con el mismo nick y el mismo perfil
+     * que {@code u}.
      *
      * @param u usuario que se busca
      * @return el usuario registrado con ese nick
-     * @throws DominioException si no hay ningún usuario registrado con ese nick
+     * @throws DominioException si no hay ningún usuario registrado con ese
+     *         nick o si está registrado con otro perfil
      */
     private Usuario usuarioRegistrado(Usuario u) throws DominioException {
         Usuario registrado = usuarios.get(u.getNick());
         if (registrado == null) {
             throw new DominioException("El usuario \"" + u.getNick() + "\" no está registrado en el sistema.");
         }
+        if (registrado.getClass() != u.getClass()) {
+            throw new DominioException("El usuario \"" + u.getNick() + "\" está registrado como "
+                    + registrado.getClass().getSimpleName() + ", no como "
+                    + u.getClass().getSimpleName() + ".");
+        }
         return registrado;
+    }
+
+    /**
+     * Quita de las colecciones del sistema las entidades que ha eliminado el
+     * modelo al aplicar la política de borrado.
+     *
+     * @param eliminados entidades devueltas por un
+     *                   {@code eliminar(PoliticaBorrado)} del modelo
+     */
+    private void olvidar(Set<Object> eliminados) {
+        for (Object eliminado : eliminados) {
+            if (eliminado instanceof Usuario usuario) {
+                usuarios.remove(usuario.getNick());
+            } else if (eliminado instanceof Local local) {
+                locales.remove(local.getDireccion());
+            } else if (eliminado instanceof Review review) {
+                reviews.remove(review);
+            } else if (eliminado instanceof Contestacion contestacion) {
+                contestaciones.remove(contestacion.getReview());
+            } else if (eliminado instanceof Reserva reserva) {
+                reservas.remove(reserva);
+            }
+        }
     }
 
     /**

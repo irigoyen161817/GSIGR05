@@ -10,8 +10,10 @@ import java.util.Objects;
  * <p>Un usuario tiene un {@code nick}, una contraseña y una fecha de
  * nacimiento. El {@code nick} debe tener al menos
  * {@value #LONGITUD_MINIMA_NICK} caracteres (una vez eliminados los espacios
- * en blanco de los extremos) y su unicidad en el sistema la garantiza
- * {@code GSILabs.BSystem.BusinessSystem}, no esta clase. No se permiten
+ * en blanco de los extremos) y distingue mayúsculas y minúsculas
+ * ({@code "ana"} y {@code "Ana"} son nicks distintos). Su unicidad en el
+ * sistema la garantiza {@code GSILabs.BSystem.BusinessSystem}, no esta
+ * clase. No se permiten
  * usuarios con menos de {@value #EDAD_MINIMA} años (C03).</p>
  *
  * <p>Todo usuario tiene un perfil concreto, modelado como subtipo:
