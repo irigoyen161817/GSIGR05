@@ -24,7 +24,7 @@ import java.util.Objects;
  * C08): no se puede valorar una visita que todavía no ha ocurrido, ya
  * que debe ser anterior o igual a la fecha de creación de la review.</p>
  *
- * <p>Una review puede tener como máximo una {@link Contestación}, del
+ * <p>Una review puede tener como máximo una {@link Contestacion}, del
  * dueño del local reseñado.</p>
  */
 public final class Review {
@@ -44,7 +44,7 @@ public final class Review {
     private final String comentario;
     private final LocalDate fechaVisita;
     private final LocalDate fechaCreacion;
-    private Contestación contestacion;
+    private Contestacion contestacion;
 
     /**
      * Crea una review. La fecha de creación se asigna automáticamente a
@@ -152,33 +152,33 @@ public final class Review {
      * Devuelve la contestación del dueño a esta review, si existe.
      *
      * @return la contestación, o {@code null} si aún no se ha respondido
-     * @see Contestación#vincular()
+     * @see Contestacion#vincular()
      */
-    public Contestación getContestacion() {
+    public Contestacion getContestacion() {
         return contestacion;
     }
 
     /**
      * Asigna la contestación de esta review. Solo debe invocarse desde
-     * {@link Contestación#vincular()}, que es quien valida que no exista
+     * {@link Contestacion#vincular()}, que es quien valida que no exista
      * ya una contestación previa y que el autor sea dueño del local
      * reseñado.
      *
      * @param contestacion contestación a asociar con esta review
      */
-    void asignarContestacionInterna(Contestación contestacion) {
+    void asignarContestacionInterna(Contestacion contestacion) {
         this.contestacion = contestacion;
     }
 
     /**
      * Quita la contestación de esta review, si es {@code contestacion}.
-     * Solo debe invocarse desde {@link Contestación#desvincular()}.
+     * Solo debe invocarse desde {@link Contestacion#desvincular()}.
      *
      * @param contestacion contestación a desasociar de esta review; si no
      *                      coincide con la contestación actual, no se
      *                      hace nada
      */
-    void quitarContestacionInterna(Contestación contestacion) {
+    void quitarContestacionInterna(Contestacion contestacion) {
         if (this.contestacion == contestacion) {
             this.contestacion = null;
         }

@@ -26,7 +26,7 @@ import java.util.Objects;
  * enlace. Así, una contestación rechazada por el sistema no deja rastro
  * en la review.</p>
  */
-public final class Contestación {
+public final class Contestacion {
 
     /** Longitud máxima permitida para el comentario. */
     public static final int MAX_CARACTERES_COMENTARIO = 500;
@@ -59,7 +59,7 @@ public final class Contestación {
      *         {@value #MAX_CARACTERES_COMENTARIO} caracteres o si
      *         {@code autor} no es dueño del local de {@code review} (C07)
      */
-    public Contestación(Propietario autor, Review review, String comentario) throws DominioException {
+    public Contestacion(Propietario autor, Review review, String comentario) throws DominioException {
         Objects.requireNonNull(autor, "La contestación debe tener un autor.");
         Objects.requireNonNull(review, "La contestación debe estar asociada a una review.");
         Objects.requireNonNull(comentario, "El comentario de la contestación es obligatorio.");
@@ -182,7 +182,7 @@ public final class Contestación {
      * que una review no puede tener más de una contestación.
      *
      * @param obj objeto con el que comparar
-     * @return {@code true} si {@code obj} es una {@code Contestación}
+     * @return {@code true} si {@code obj} es una {@code Contestacion}
      *         que responde a la misma review
      */
     @Override
@@ -190,10 +190,10 @@ public final class Contestación {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof Contestación)) {
+        if (!(obj instanceof Contestacion)) {
             return false;
         }
-        Contestación otra = (Contestación) obj;
+        Contestacion otra = (Contestacion) obj;
         return review.equals(otra.review);
     }
 
@@ -204,7 +204,7 @@ public final class Contestación {
 
     @Override
     public String toString() {
-        return "Contestación{autor=" + autor.getNick() + ", review=" + review.getCliente().getNick()
+        return "Contestacion{autor=" + autor.getNick() + ", review=" + review.getCliente().getNick()
                 + "@" + review.getLocal().getNombre() + " (" + review.getFechaVisita() + ")"
                 + ", fechaCreacion=" + fechaCreacion + "}";
     }
