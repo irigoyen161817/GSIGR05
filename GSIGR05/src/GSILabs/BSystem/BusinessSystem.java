@@ -477,7 +477,7 @@ public class BusinessSystem implements LeisureOffice, LookupService {
      */
     @Override
     public boolean existeRewiew(Usuario u, Local l, LocalDate ld) {
-        if (!(u instanceof Cliente cliente) || obtenerUsuario(cliente.getNick()) != cliente
+        if (!(u instanceof Cliente cliente) || !esClienteRegistrado(cliente)
                 || l == null || !esLocalRegistrado(l) || ld == null) {
             return false;
         }
@@ -518,6 +518,17 @@ public class BusinessSystem implements LeisureOffice, LookupService {
             throw new DominioException("El cliente \"" + c.getNick()
                     + "\" no es el cliente registrado en el sistema con ese nick.");
         }
+    }
+
+    /**
+     * Indica si {@code c} es el mismo objeto que está registrado con su
+     * nick.
+     *
+     * @param c cliente que se consulta
+     * @return {@code true} si {@code c} es el cliente registrado con su nick
+     */
+    private boolean esClienteRegistrado(Cliente c) {
+        return obtenerUsuario(c.getNick()) == c;
     }
 
     /**
