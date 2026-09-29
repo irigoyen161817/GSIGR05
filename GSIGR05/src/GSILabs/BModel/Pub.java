@@ -33,7 +33,7 @@ public final class Pub extends Local {
      * @throws DominioException si el local incumple las reglas de
      *         {@link Local} (sin dueño o descripción demasiado larga)
      */
-    public Pub(String nombre, Dirección direccion, String descripcion, Dueño primerDueño,
+    public Pub(String nombre, Direccion direccion, String descripcion, Propietario primerDueño,
             LocalTime horaApertura, LocalTime horaClausura)
             throws DominioException {
         super(nombre, direccion, descripcion, primerDueño);

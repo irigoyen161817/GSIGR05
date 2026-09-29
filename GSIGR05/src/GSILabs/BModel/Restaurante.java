@@ -34,7 +34,7 @@ public final class Restaurante extends Local implements Reservable {
      *         mayor que 0, o si las capacidades no son positivas o la
      *         capacidad por mesa supera la total (C02)
      */
-    public Restaurante(String nombre, Dirección direccion, String descripcion, Dueño primerDueño,
+    public Restaurante(String nombre, Direccion direccion, String descripcion, Propietario primerDueño,
             double precioMenu, int capacidadTotal, int capacidadMaximaPorMesa)
             throws DominioException {
         super(nombre, direccion, descripcion, primerDueño);

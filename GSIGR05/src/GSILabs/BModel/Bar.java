@@ -26,7 +26,7 @@ public final class Bar extends Local implements Reservable {
      * @throws DominioException si el local incumple las reglas de
      *         {@link Local} (sin dueño o descripción demasiado larga)
      */
-    public Bar(String nombre, Dirección direccion, String descripcion, Dueño primerDueño)
+    public Bar(String nombre, Direccion direccion, String descripcion, Propietario primerDueño)
             throws DominioException {
         super(nombre, direccion, descripcion, primerDueño);
     }
