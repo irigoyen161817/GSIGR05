@@ -89,7 +89,7 @@ public abstract class Local {
         }
         validarDescripcion(nombre, descripcion);
 
-        this.nombre = nombre;
+        this.nombre = nombre.strip();
         this.direccion = direccion;
         this.descripcion = descripcion;
         this.dueños.add(primerDueño);
