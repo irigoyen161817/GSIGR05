@@ -27,9 +27,4 @@ public class Cliente extends Usuario {
             throws DominioException {
         super(nick, contrasena, fechaNacimiento);
     }
-
-    @Override
-    public String toString() {
-        return "Cliente{nick=" + getNick() + "}";
-    }
 }

@@ -98,6 +98,18 @@ public abstract class Usuario {
     }
 
     /**
+     * Devuelve una representación legible del usuario: su perfil seguido de
+     * su nick, por ejemplo {@code Cliente ana} o {@code Propietario luis}.
+     * Nunca incluye la contraseña.
+     *
+     * @return el perfil y el nick del usuario
+     */
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " " + nick;
+    }
+
+    /**
      * Dos usuarios son iguales si tienen el mismo nick, ya que el nick es
      * único dentro del sistema. Esta igualdad es común a todos los perfiles:
      * un {@link Propietario} y un {@link Cliente} con el mismo nick se consideran
