@@ -61,14 +61,20 @@ public final class Contestacion {
      *         {@code autor} no es dueño del local de {@code review} (C07)
      */
     public Contestacion(Propietario autor, Review review, String comentario) throws DominioException {
-        Objects.requireNonNull(autor, "La contestación debe tener un autor.");
-        Objects.requireNonNull(review, "La contestación debe estar asociada a una review.");
-        Objects.requireNonNull(comentario, "El comentario de la contestación es obligatorio.");
+        if (autor == null) {
+            throw new NullPointerException("La contestación debe tener un autor.");
+        }
+        if (review == null) {
+            throw new NullPointerException("La contestación debe estar asociada a una review.");
+        }
+        if (comentario == null) {
+            throw new NullPointerException("El comentario de la contestación es obligatorio.");
+        }
         if (comentario.isBlank()) {
             throw new IllegalArgumentException("El comentario de la contestación no puede estar en blanco.");
         }
         if (comentario.length() > MAX_CARACTERES_COMENTARIO) {
-            throw new DominioException("La contestación de " + autor.getNick() + " tiene "
+            throw new DominioException("La contestación de \"" + autor.getNick() + "\" tiene "
                     + comentario.length() + " caracteres y el máximo permitido es "
                     + MAX_CARACTERES_COMENTARIO + ".");
         }
@@ -83,8 +89,9 @@ public final class Contestacion {
     private static void comprobarQueEsDueño(Propietario autor, Review review) throws DominioException {
         Local local = review.getLocal();
         if (!local.getDueños().contains(autor)) {
-            throw new DominioException(autor.getNick() + " no puede contestar la review de "
-                    + review.getCliente().getNick() + " porque no es dueño del local \""
+            throw new DominioException("El usuario \"" + autor.getNick()
+                    + "\" no puede contestar la review de \"" + review.getCliente().getNick()
+                    + "\" porque no es dueño del local \""
                     + local.getNombre() + "\".");
         }
     }
@@ -154,7 +161,7 @@ public final class Contestacion {
             throw new IllegalStateException("La contestación ya está vinculada a la review.");
         }
         if (review.getContestacion() != null) {
-            throw new DominioException("La review de " + review.getCliente().getNick() + " sobre \""
+            throw new DominioException("La review de \"" + review.getCliente().getNick() + "\" sobre \""
                     + review.getLocal().getNombre() + "\" ya tiene una contestación y solo se permite una.");
         }
         comprobarQueEsDueño(autor, review);
@@ -198,11 +205,23 @@ public final class Contestacion {
         return review.equals(otra.review);
     }
 
+    /**
+     * Calcula el código hash a partir de la review contestada, que es la
+     * clave natural de la contestación.
+     *
+     * @return el código hash, coherente con {@link #equals(Object)}
+     */
     @Override
     public int hashCode() {
         return Objects.hash(review);
     }
 
+    /**
+     * Devuelve una descripción legible con el autor, la review contestada
+     * y la fecha de creación.
+     *
+     * @return la descripción de la contestación
+     */
     @Override
     public String toString() {
         return "Contestacion{autor=" + autor.getNick() + ", review=" + review.getCliente().getNick()

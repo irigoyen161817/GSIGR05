@@ -67,9 +67,15 @@ public final class Review {
      */
     public Review(Cliente cliente, Local local, int valoracion, String comentario,
             LocalDate fechaVisita) throws DominioException {
-        Objects.requireNonNull(cliente, "La review debe tener un cliente autor.");
-        Objects.requireNonNull(local, "La review debe tener un local valorado.");
-        Objects.requireNonNull(fechaVisita, "La fecha de visita es obligatoria.");
+        if (cliente == null) {
+            throw new NullPointerException("La review debe tener un cliente autor.");
+        }
+        if (local == null) {
+            throw new NullPointerException("La review debe tener un local valorado.");
+        }
+        if (fechaVisita == null) {
+            throw new NullPointerException("La fecha de visita es obligatoria.");
+        }
         if (valoracion < VALORACION_MINIMA || valoracion > VALORACION_MAXIMA) {
             throw new DominioException("La review de " + cliente.getNick() + " sobre \"" + local.getNombre()
                     + "\" tiene " + valoracion + " estrellas, pero la valoración debe estar entre "
