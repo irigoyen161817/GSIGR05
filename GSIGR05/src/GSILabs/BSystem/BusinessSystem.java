@@ -544,7 +544,8 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         }
         Set<Object> eliminados;
         try {
-            eliminados = localRegistrado(l).eliminar(politicaBorrado);
+            comprobarLocalRegistrado(l);
+            eliminados = l.eliminar(politicaBorrado);
         } catch (DominioException e) {
             operacionRechazada(e);
             return false;
@@ -595,13 +596,13 @@ public class BusinessSystem implements LeisureOffice, LookupService {
             throw new NullPointerException("Hay que indicar el propietario que se quiere añadir como dueño.");
         }
         try {
-            Local local = localRegistrado(l);
+            comprobarLocalRegistrado(l);
             Propietario propietario = (Propietario) usuarioRegistrado(p);
-            if (local.getDueños().contains(propietario)) {
+            if (l.getDueños().contains(propietario)) {
                 throw new DominioException("El propietario \"" + propietario.getNick()
-                        + "\" ya es dueño del local \"" + local.getNombre() + "\".");
+                        + "\" ya es dueño del local \"" + l.getNombre() + "\".");
             }
-            local.añadirDueño(propietario);
+            l.añadirDueño(propietario);
         } catch (DominioException e) {
             operacionRechazada(e);
             return false;
@@ -635,13 +636,13 @@ public class BusinessSystem implements LeisureOffice, LookupService {
             throw new NullPointerException("Hay que indicar el propietario que se quiere quitar como dueño.");
         }
         try {
-            Local local = localRegistrado(l);
+            comprobarLocalRegistrado(l);
             Propietario propietario = (Propietario) usuarioRegistrado(p);
-            if (!local.getDueños().contains(propietario)) {
+            if (!l.getDueños().contains(propietario)) {
                 throw new DominioException("El propietario \"" + propietario.getNick()
-                        + "\" no es dueño del local \"" + local.getNombre() + "\".");
+                        + "\" no es dueño del local \"" + l.getNombre() + "\".");
             }
-            local.quitarDueño(propietario);
+            l.quitarDueño(propietario);
         } catch (DominioException e) {
             operacionRechazada(e);
             return false;
@@ -656,9 +657,11 @@ public class BusinessSystem implements LeisureOffice, LookupService {
      * su comportamiento se define aquí.
      *
      * <p>Los dueños de {@code viejoL} se traspasan a {@code nuevoL}, que
-     * termina con exactamente los mismos dueños, y el local pasa a estar
-     * registrado en la dirección de {@code nuevoL}. Si esa dirección es
-     * distinta, la de {@code viejoL} queda libre.</p>
+     * termina con exactamente los mismos dueños: los dueños con los que se
+     * creó {@code nuevoL} se descartan, así que no hace falta que estén
+     * registrados. El local pasa a estar registrado en la dirección de
+     * {@code nuevoL}. Si esa dirección es distinta, la de {@code viejoL}
+     * queda libre.</p>
      *
      * <p>Los cambios que no afectan a la identidad del local (por ejemplo, la
      * descripción o las especialidades de un {@link Bar}) no necesitan este
@@ -673,8 +676,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
      *       {@link Pub} o {@link Restaurante});</li>
      *   <li>{@code nuevoL} está en otra dirección que ya ocupa otro
      *       local (C01);</li>
-     *   <li>algún dueño de {@code nuevoL} no es el propietario registrado
-     *       con ese nick;</li>
      *   <li>{@code viejoL} tiene reviews o reservas. Esta restricción se
      *       aplica con cualquier política de borrado: las reviews y reservas
      *       guardan una referencia al local y seguirían apuntando al antiguo;
@@ -701,10 +702,11 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         if (nuevoL == null) {
             throw new NullPointerException("Hay que indicar los nuevos datos del local.");
         }
-        Local registrado;
+        Direccion direccionVieja = viejoL.getDireccion();
+        Direccion direccionNueva = nuevoL.getDireccion();
         try {
-            registrado = localRegistrado(viejoL);
-            if (registrado == nuevoL) {
+            comprobarLocalRegistrado(viejoL);
+            if (viejoL == nuevoL) {
                 operacionCorrecta();
                 return true;
             }
@@ -712,30 +714,30 @@ public class BusinessSystem implements LeisureOffice, LookupService {
                 throw new IllegalStateException("El local \"" + nuevoL.getNombre()
                         + "\" ya está vinculado a sus dueños y no puede sustituir a otro.");
             }
-            if (registrado.getClass() != nuevoL.getClass()) {
-                throw new DominioException("No se puede cambiar el local \"" + registrado.getNombre()
-                        + "\" de " + registrado.getClass().getSimpleName() + " a "
+            if (viejoL.getClass() != nuevoL.getClass()) {
+                throw new DominioException("No se puede cambiar el local \"" + viejoL.getNombre()
+                        + "\" de " + viejoL.getClass().getSimpleName() + " a "
                         + nuevoL.getClass().getSimpleName() + ".");
             }
-            if (!registrado.getReviews().isEmpty() || !registrado.getReservas().isEmpty()) {
-                throw new DominioException("No se puede actualizar el local \"" + registrado.getNombre()
-                        + "\" porque tiene " + registrado.getReviews().size() + " review(s) y "
-                        + registrado.getReservas().size()
+            int numReviews = viejoL.getReviews().size();
+            int numReservas = viejoL.getReservas().size();
+            if (numReviews > 0 || numReservas > 0) {
+                throw new DominioException("No se puede actualizar el local \"" + viejoL.getNombre()
+                        + "\" porque tiene " + numReviews + " review(s) y " + numReservas
                         + " reserva(s) que seguirían apuntando a sus datos antiguos.");
             }
-            if (!registrado.getDireccion().equals(nuevoL.getDireccion())) {
+            if (!direccionVieja.equals(direccionNueva)) {
                 comprobarDireccionLibre(nuevoL);
             }
-            comprobarDueñosRegistrados(nuevoL);
-            traspasarDueños(registrado, nuevoL);
+            traspasarDueños(viejoL, nuevoL);
         } catch (DominioException e) {
             operacionRechazada(e);
             return false;
         }
-        registrado.desvincular();
-        locales.remove(registrado.getDireccion());
+        viejoL.desvincular();
+        locales.remove(direccionVieja);
         nuevoL.vincular();
-        locales.put(nuevoL.getDireccion(), nuevoL);
+        locales.put(direccionNueva, nuevoL);
         operacionCorrecta();
         return true;
     }
@@ -748,11 +750,32 @@ public class BusinessSystem implements LeisureOffice, LookupService {
      * @throws DominioException si ya hay un local registrado en esa dirección
      */
     private void comprobarDireccionLibre(Local l) throws DominioException {
-        Local ocupante = locales.get(l.getDireccion());
+        Direccion direccion = l.getDireccion();
+        Local ocupante = locales.get(direccion);
         if (ocupante != null) {
             throw new DominioException("No se puede registrar el local \"" + l.getNombre()
-                    + "\" porque ya existe otro local, \"" + ocupante.getNombre() + "\", en "
-                    + l.getDireccion() + ".");
+                    + "\" porque la dirección " + direccion + " ya está ocupada por el local \""
+                    + ocupante.getNombre() + "\".");
+        }
+    }
+
+    /**
+     * Comprueba que {@code l} sea el mismo objeto que está registrado en su
+     * dirección: otro local en la misma dirección se considera inexistente.
+     *
+     * @param l local que se busca
+     * @throws DominioException si {@code l} no es el local registrado en su
+     *         dirección
+     */
+    private void comprobarLocalRegistrado(Local l) throws DominioException {
+        Direccion direccion = l.getDireccion();
+        Local registrado = locales.get(direccion);
+        if (registrado == null) {
+            throw new DominioException("El local \"" + l.getNombre() + "\" no está registrado en el sistema.");
+        }
+        if (registrado != l) {
+            throw new DominioException("El local \"" + l.getNombre() + "\" no está registrado en el sistema: en "
+                    + direccion + " está registrado otro local, \"" + registrado.getNombre() + "\".");
         }
     }
 
@@ -773,27 +796,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
                         + l.getNombre() + "\" no es el propietario registrado en el sistema con ese nick.");
             }
         }
-    }
-
-    /**
-     * Devuelve el local registrado, exigiendo que sea el mismo objeto que
-     * {@code l}: otro local en la misma dirección se considera inexistente.
-     *
-     * @param l local que se busca
-     * @return el local registrado, que es el propio {@code l}
-     * @throws DominioException si {@code l} no es el local registrado en su
-     *         dirección
-     */
-    private Local localRegistrado(Local l) throws DominioException {
-        Local registrado = locales.get(l.getDireccion());
-        if (registrado == null) {
-            throw new DominioException("El local \"" + l.getNombre() + "\" no está registrado en el sistema.");
-        }
-        if (registrado != l) {
-            throw new DominioException("El local \"" + l.getNombre() + "\" no está registrado en el sistema: en "
-                    + l.getDireccion() + " está registrado otro local, \"" + registrado.getNombre() + "\".");
-        }
-        return registrado;
     }
 
     /**
