@@ -15,6 +15,7 @@ import GSILabs.BModel.Restaurante;
 import GSILabs.BModel.Review;
 import GSILabs.BModel.Usuario;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -477,7 +478,7 @@ public class BusinessSystem implements LeisureOffice, LookupService {
      */
     @Override
     public boolean existeRewiew(Usuario u, Local l, LocalDate ld) {
-        if (!(u instanceof Cliente cliente) || obtenerUsuario(cliente.getNick()) != cliente
+        if (!(u instanceof Cliente cliente) || !esClienteRegistrado(cliente)
                 || l == null || !esLocalRegistrado(l) || ld == null) {
             return false;
         }
@@ -518,6 +519,17 @@ public class BusinessSystem implements LeisureOffice, LookupService {
             throw new DominioException("El cliente \"" + c.getNick()
                     + "\" no es el cliente registrado en el sistema con ese nick.");
         }
+    }
+
+    /**
+     * Indica si {@code c} es el mismo objeto que está registrado con su
+     * nick.
+     *
+     * @param c cliente que se consulta
+     * @return {@code true} si {@code c} es el cliente registrado con su nick
+     */
+    private boolean esClienteRegistrado(Cliente c) {
+        return obtenerUsuario(c.getNick()) == c;
     }
 
     /**
@@ -984,51 +996,194 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #29
+     * <p>Que el local no sea un {@link Pub} lo garantiza el tipo
+     * {@link Reservable}, que solo implementan {@link Bar} y
+     * {@link Restaurante} (C09). Aquí se comprueba que el cliente sea el
+     * registrado con ese nick, que el local sea el registrado en su
+     * dirección, que la fecha y hora sean posteriores al momento actual y
+     * que el cliente no tenga ya una reserva en ese local ese mismo día. La
+     * reserva se crea sin descuento. Tras el alta, aparece en
+     * {@link Cliente#getReservas()} y en {@link Local#getReservas()}.</p>
+     *
+     * <p>El local se compara con el objeto registrado, no solo con su
+     * dirección: un local que no se ha dado de alta se considera
+     * inexistente aunque haya otro registrado en su misma dirección.</p>
+     *
+     * <p>Devuelve {@code false}, con el motivo en {@link #getUltimoError()},
+     * si el cliente o el local no están registrados, si la fecha y hora no
+     * son futuras o si el cliente ya tiene una reserva en ese local ese
+     * día.</p>
+     *
+     * @throws NullPointerException si algún argumento es {@code null}
      */
     @Override
     public boolean nuevaReserva(Cliente c, Reservable r, LocalDate ld, LocalTime lt) {
-        throw new UnsupportedOperationException("Pendiente: #29");
+        if (c == null) {
+            throw new NullPointerException("Hay que indicar el cliente que hace la reserva.");
+        }
+        if (r == null) {
+            throw new NullPointerException("Hay que indicar el local que se quiere reservar.");
+        }
+        if (ld == null) {
+            throw new NullPointerException("Hay que indicar la fecha de la reserva.");
+        }
+        if (lt == null) {
+            throw new NullPointerException("Hay que indicar la hora de la reserva.");
+        }
+        Local local = (Local) r;
+        LocalDateTime fechaHora = LocalDateTime.of(ld, lt);
+        Reserva reserva;
+        try {
+            comprobarClienteRegistrado(c);
+            comprobarLocalRegistrado(local);
+            comprobarFechaFutura(local, fechaHora);
+            comprobarDiaSinReserva(c, local, ld);
+            reserva = new Reserva(c, r, fechaHora);
+            reserva.vincular();
+        } catch (DominioException e) {
+            operacionRechazada(e);
+            return false;
+        }
+        reservas.add(reserva);
+        operacionCorrecta();
+        return true;
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #29
+     * <p>Las reservas se devuelven en el orden en que se hicieron. Un
+     * {@code c} nulo o que no es el cliente registrado con su nick se
+     * considera inexistente.</p>
      */
     @Override
     public Reserva[] obtenerReservas(Cliente c) {
-        throw new UnsupportedOperationException("Pendiente: #29");
+        if (c == null || !esClienteRegistrado(c)) {
+            return null;
+        }
+        return c.getReservas().toArray(new Reserva[0]);
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #29
+     * <p>Las reservas se devuelven en el orden en que se hicieron. Un
+     * {@code r} nulo o que no es el local registrado en su dirección se
+     * considera inexistente.</p>
      */
     @Override
     public Reserva[] obtenerReservas(Reservable r) {
-        throw new UnsupportedOperationException("Pendiente: #29");
+        if (r == null) {
+            return null;
+        }
+        Local local = (Local) r;
+        if (!esLocalRegistrado(local)) {
+            return null;
+        }
+        return local.getReservas().toArray(new Reserva[0]);
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #29
+     * <p>Las reservas se devuelven en el orden en que se hicieron. El
+     * resultado nunca es {@code null}: si no hay reservas ese día, tiene
+     * longitud 0.</p>
+     *
+     * @throws NullPointerException si {@code ld} es {@code null}
      */
     @Override
     public Reserva[] obtenerReservas(LocalDate ld) {
-        throw new UnsupportedOperationException("Pendiente: #29");
+        if (ld == null) {
+            throw new NullPointerException("Hay que indicar la fecha de las reservas que se buscan.");
+        }
+        List<Reserva> delDia = new ArrayList<>();
+        for (Reserva reserva : reservas) {
+            if (reserva.getFechaHora().toLocalDate().equals(ld)) {
+                delDia.add(reserva);
+            }
+        }
+        return delDia.toArray(new Reserva[0]);
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #29
+     * <p>Solo se elimina la reserva registrada. Una reserva no tiene
+     * dependientes, así que la {@link #getPoliticaBorrado() política de
+     * borrado} no impide la baja. Tras la baja, la reserva deja de aparecer
+     * en {@link Cliente#getReservas()} y en {@link Local#getReservas()}.</p>
+     *
+     * <p>Devuelve {@code false}, con el motivo en {@link #getUltimoError()},
+     * si la reserva no está registrada.</p>
+     *
+     * @throws NullPointerException si {@code r} es {@code null}
      */
     @Override
     public boolean eliminarReserva(Reserva r) {
-        throw new UnsupportedOperationException("Pendiente: #29");
+        if (r == null) {
+            throw new NullPointerException("Hay que indicar la reserva que se quiere eliminar.");
+        }
+        try {
+            comprobarReservaRegistrada(r);
+        } catch (DominioException e) {
+            operacionRechazada(e);
+            return false;
+        }
+        olvidar(r.eliminar(politicaBorrado));
+        operacionCorrecta();
+        return true;
+    }
+
+    /**
+     * Comprueba que la fecha y hora de una reserva sean posteriores al
+     * momento actual.
+     *
+     * @param local     local que se quiere reservar
+     * @param fechaHora fecha y hora de la reserva
+     * @throws DominioException si la fecha y hora no son futuras
+     */
+    private static void comprobarFechaFutura(Local local, LocalDateTime fechaHora) throws DominioException {
+        if (!fechaHora.isAfter(LocalDateTime.now())) {
+            throw new DominioException("No se puede reservar en \"" + local.getNombre() + "\" para el "
+                    + fechaHora.toLocalDate() + " a las " + fechaHora.toLocalTime()
+                    + " porque las reservas tienen que ser para una fecha y hora futuras.");
+        }
+    }
+
+    /**
+     * Comprueba que el cliente no tenga ya una reserva en el local el día
+     * indicado.
+     *
+     * @param c     cliente que hace la reserva
+     * @param local local que se quiere reservar
+     * @param dia   día de la reserva
+     * @throws DominioException si el cliente ya tiene una reserva en ese
+     *         local ese día
+     */
+    private static void comprobarDiaSinReserva(Cliente c, Local local, LocalDate dia) throws DominioException {
+        for (Reserva reserva : c.getReservas()) {
+            if (reserva.getReservable().equals(local) && reserva.getFechaHora().toLocalDate().equals(dia)) {
+                throw new DominioException("\"" + c.getNick() + "\" ya tiene una reserva en \""
+                        + local.getNombre() + "\" el " + dia
+                        + " y no puede tener dos reservas en el mismo local el mismo día.");
+            }
+        }
+    }
+
+    /**
+     * Comprueba que {@code r} sea una reserva registrada en el sistema. Como
+     * cada reserva tiene un identificador único, generado al crearla, solo
+     * la propia reserva registrada lo cumple.
+     *
+     * @param r reserva que se busca
+     * @throws DominioException si {@code r} no está registrada
+     */
+    private void comprobarReservaRegistrada(Reserva r) throws DominioException {
+        if (!reservas.contains(r)) {
+            throw new DominioException("La reserva " + r.getId() + " de \"" + r.getCliente().getNick()
+                    + "\" para el " + r.getFechaHora().toLocalDate() + " no está registrada en el sistema.");
+        }
     }
 
     /**
