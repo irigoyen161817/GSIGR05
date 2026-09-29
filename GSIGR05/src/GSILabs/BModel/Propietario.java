@@ -30,6 +30,6 @@ public class Propietario extends Usuario {
 
     @Override
     public String toString() {
-        return "Propietario: {nick=" + getNick() + "}";
+        return "Propietario{nick=" + getNick() + "}";
     }
 }
