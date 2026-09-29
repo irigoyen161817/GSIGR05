@@ -26,6 +26,9 @@ import java.util.Objects;
  * valorar una visita que todavía no ha ocurrido. Esta segunda no es una
  * regla de negocio, sino una fecha mal formada, por lo que se rechaza con
  * {@link IllegalArgumentException} y no con {@link DominioException}.</p>
+ *
+ * <p>Una review puede tener como máximo una {@link Contestacion}, del
+ * dueño del local reseñado.</p>
  */
 public final class Review {
 
@@ -44,6 +47,7 @@ public final class Review {
     private final String comentario;
     private final LocalDate fechaVisita;
     private final LocalDate fechaCreacion;
+    private Contestacion contestacion;
 
     /**
      * Crea una review. La fecha de creación se asigna automáticamente a
@@ -159,6 +163,42 @@ public final class Review {
      */
     public LocalDate getFechaCreacion() {
         return fechaCreacion;
+    }
+
+    /**
+     * Devuelve la contestación del dueño a esta review, si existe.
+     *
+     * @return la contestación, o {@code null} si aún no se ha respondido
+     * @see Contestacion#vincular()
+     */
+    public Contestacion getContestacion() {
+        return contestacion;
+    }
+
+    /**
+     * Asigna la contestación de esta review. Solo debe invocarse desde
+     * {@link Contestacion#vincular()}, que es quien valida que no exista
+     * ya una contestación previa y que el autor sea dueño del local
+     * reseñado.
+     *
+     * @param contestacion contestación a asociar con esta review
+     */
+    void asignarContestacionInterna(Contestacion contestacion) {
+        this.contestacion = contestacion;
+    }
+
+    /**
+     * Quita la contestación de esta review, si es {@code contestacion}.
+     * Solo debe invocarse desde {@link Contestacion#desvincular()}.
+     *
+     * @param contestacion contestación a desasociar de esta review; si no
+     *                      coincide con la contestación actual, no se
+     *                      hace nada
+     */
+    void quitarContestacionInterna(Contestacion contestacion) {
+        if (this.contestacion == contestacion) {
+            this.contestacion = null;
+        }
     }
 
     /**
