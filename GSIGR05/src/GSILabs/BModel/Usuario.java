@@ -15,7 +15,7 @@ import java.util.Objects;
  * usuarios con menos de {@value #EDAD_MINIMA} años (C03).</p>
  *
  * <p>Todo usuario tiene un perfil concreto, modelado como subtipo:
- * {@link Dueño} o {@link Cliente} (C04, C06). La igualdad entre usuarios se
+ * {@link Propietario} o {@link Cliente} (C04, C06). La igualdad entre usuarios se
  * define únicamente a partir del nick (ver {@link #equals(Object)}), con
  * independencia del perfil concreto.</p>
  */
@@ -100,7 +100,7 @@ public abstract class Usuario {
     /**
      * Dos usuarios son iguales si tienen el mismo nick, ya que el nick es
      * único dentro del sistema. Esta igualdad es común a todos los perfiles:
-     * un {@link Dueño} y un {@link Cliente} con el mismo nick se consideran
+     * un {@link Propietario} y un {@link Cliente} con el mismo nick se consideran
      * iguales, puesto que ese nick no podría haberse asignado a ambos.
      *
      * @param obj objeto con el que comparar
