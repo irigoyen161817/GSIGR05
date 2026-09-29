@@ -398,41 +398,164 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #27
+     * <p>Los datos propios de la review (valoración de 0 a 5 estrellas,
+     * comentario de 500 caracteres como máximo y visita ya ocurrida) y su
+     * fecha de creación (C08) ya los garantiza {@link Review}; aquí se
+     * comprueba que su autor sea el cliente registrado con ese nick, que su
+     * local sea el registrado en su dirección y que ese cliente no haya
+     * valorado ya la misma visita (C05). Tras el alta, la review aparece en
+     * {@link Cliente#getReviews()} y en {@link Local#getReviews()}.</p>
+     *
+     * <p>Devuelve {@code false}, con el motivo en {@link #getUltimoError()},
+     * si el cliente o el local no están registrados o si ya hay una review
+     * del mismo cliente sobre el mismo local con la misma fecha de
+     * visita.</p>
+     *
+     * @throws NullPointerException si {@code r} es {@code null}
      */
     @Override
     public boolean nuevaReview(Review r) {
-        throw new UnsupportedOperationException("Pendiente: #27");
+        if (r == null) {
+            throw new NullPointerException("Hay que indicar la review que se quiere publicar.");
+        }
+        try {
+            comprobarClienteRegistrado(r.getCliente());
+            comprobarLocalRegistrado(r.getLocal());
+            comprobarVisitaSinValorar(r);
+            r.vincular();
+        } catch (DominioException e) {
+            operacionRechazada(e);
+            return false;
+        }
+        reviews.add(r);
+        operacionCorrecta();
+        return true;
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #27
+     * <p>Solo se elimina la review registrada: otra review de la misma
+     * visita que no se ha dado de alta se considera inexistente. La baja
+     * aplica la {@link #getPoliticaBorrado() política de borrado} a su
+     * contestación. Con {@link PoliticaBorrado#BLOQUEAR}, si la tiene, la
+     * baja se rechaza, que es el comportamiento que describe
+     * {@link LeisureOffice}. Con {@link PoliticaBorrado#CASCADA}, se
+     * elimina también la contestación.</p>
+     *
+     * <p>Devuelve {@code false}, con el motivo en {@link #getUltimoError()},
+     * si la review no está registrada o si la política de borrado impide la
+     * baja.</p>
+     *
+     * @throws NullPointerException si {@code r} es {@code null}
      */
     @Override
     public boolean eliminaReview(Review r) {
-        throw new UnsupportedOperationException("Pendiente: #27");
+        if (r == null) {
+            throw new NullPointerException("Hay que indicar la review que se quiere eliminar.");
+        }
+        Set<Object> eliminados;
+        try {
+            comprobarReviewRegistrada(r);
+            eliminados = r.eliminar(politicaBorrado);
+        } catch (DominioException e) {
+            operacionRechazada(e);
+            return false;
+        }
+        olvidar(eliminados);
+        operacionCorrecta();
+        return true;
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #27
+     * <p>Se consideran incorrectos o inexistentes, y el resultado es
+     * {@code false}, un argumento {@code null}, un usuario que no es el
+     * {@link Cliente} registrado con ese nick y un local que no es el
+     * registrado en su dirección.</p>
      */
     @Override
     public boolean existeRewiew(Usuario u, Local l, LocalDate ld) {
-        throw new UnsupportedOperationException("Pendiente: #27");
+        if (!(u instanceof Cliente cliente) || obtenerUsuario(cliente.getNick()) != cliente
+                || l == null || !esLocalRegistrado(l) || ld == null) {
+            return false;
+        }
+        for (Review review : cliente.getReviews()) {
+            if (review.getLocal().equals(l) && review.getFechaVisita().equals(ld)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #27
+     * <p>Las reviews se devuelven en el orden en que se publicaron. Un
+     * {@code l} nulo o que no es el local registrado en su dirección se
+     * considera inexistente.</p>
      */
     @Override
     public Review[] verReviews(Local l) {
-        throw new UnsupportedOperationException("Pendiente: #27");
+        if (l == null || !esLocalRegistrado(l)) {
+            return null;
+        }
+        return l.getReviews().toArray(new Review[0]);
+    }
+
+    /**
+     * Comprueba que {@code c} sea el mismo objeto que está registrado como
+     * {@link Cliente} con su nick, para que lo que se enlace con él quede
+     * enlazado con el usuario del sistema.
+     *
+     * @param c cliente que se comprueba
+     * @throws DominioException si no está registrado, está registrado con
+     *         otro perfil o no es el objeto registrado
+     */
+    private void comprobarClienteRegistrado(Cliente c) throws DominioException {
+        if (usuarioRegistrado(c) != c) {
+            throw new DominioException("El cliente \"" + c.getNick()
+                    + "\" no es el cliente registrado en el sistema con ese nick.");
+        }
+    }
+
+    /**
+     * Comprueba que el autor de la review no haya valorado ya la misma
+     * visita, es decir, el mismo local con la misma fecha de visita (C05).
+     *
+     * @param r review que se quiere publicar
+     * @throws DominioException si ya hay una review de esa visita
+     */
+    private void comprobarVisitaSinValorar(Review r) throws DominioException {
+        Cliente cliente = r.getCliente();
+        Local local = r.getLocal();
+        LocalDate fechaVisita = r.getFechaVisita();
+        if (existeRewiew(cliente, local, fechaVisita)) {
+            throw new DominioException("\"" + cliente.getNick() + "\" ya ha valorado su visita a \""
+                    + local.getNombre() + "\" del " + fechaVisita
+                    + " y no se puede valorar dos veces la misma visita.");
+        }
+    }
+
+    /**
+     * Comprueba que {@code r} sea la review registrada en el sistema: otra
+     * review de la misma visita que no se ha dado de alta se considera
+     * inexistente.
+     *
+     * @param r review que se busca
+     * @throws DominioException si su autor no es el cliente registrado, su
+     *         local no es el registrado en su dirección o {@code r} no es la
+     *         review registrada
+     */
+    private void comprobarReviewRegistrada(Review r) throws DominioException {
+        comprobarClienteRegistrado(r.getCliente());
+        comprobarLocalRegistrado(r.getLocal());
+        if (!r.isVinculada() || !reviews.contains(r)) {
+            throw new DominioException("La review de \"" + r.getCliente().getNick() + "\" sobre \""
+                    + r.getLocal().getNombre() + "\" del " + r.getFechaVisita()
+                    + " no está registrada en el sistema.");
+        }
     }
 
     /**
@@ -779,6 +902,18 @@ public class BusinessSystem implements LeisureOffice, LookupService {
             throw new DominioException("El local \"" + l.getNombre() + "\" no está registrado en el sistema: en "
                     + direccion + " está registrado otro local, \"" + registrado.getNombre() + "\".");
         }
+    }
+
+    /**
+     * Indica si {@code l} es el mismo objeto que está registrado en su
+     * dirección.
+     *
+     * @param l local que se consulta
+     * @return {@code true} si {@code l} es el local registrado en su
+     *         dirección
+     */
+    private boolean esLocalRegistrado(Local l) {
+        return obtenerLocal(l.getDireccion()) == l;
     }
 
     /**
