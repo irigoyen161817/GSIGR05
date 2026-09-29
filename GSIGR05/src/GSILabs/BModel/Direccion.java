@@ -112,18 +112,39 @@ public final class Direccion {
             return false;
         }
         Direccion otra = (Direccion) obj;
-        return localidad.equalsIgnoreCase(otra.localidad)
-                && provincia.equalsIgnoreCase(otra.provincia)
-                && calle.equalsIgnoreCase(otra.calle)
-                && numero.equalsIgnoreCase(otra.numero);
+        return clave(localidad).equals(clave(otra.localidad))
+                && clave(provincia).equals(clave(otra.provincia))
+                && clave(calle).equals(clave(otra.calle))
+                && clave(numero).equals(clave(otra.numero));
     }
 
+    /**
+     * Devuelve el código hash de la dirección, calculado con la misma
+     * normalización (minúsculas) que usa {@link #equals(Object)}, de modo
+     * que dos direcciones iguales tienen siempre el mismo código.
+     *
+     * @return el código hash de la dirección
+     */
     @Override
     public int hashCode() {
-        return Objects.hash(localidad.toLowerCase(Locale.ROOT), provincia.toLowerCase(Locale.ROOT),
-                calle.toLowerCase(Locale.ROOT), numero.toLowerCase(Locale.ROOT));
+        return Objects.hash(clave(localidad), clave(provincia), clave(calle), clave(numero));
     }
 
+    /**
+     * Forma de un campo que se usa para comparar: en minúsculas, sin
+     * distinguir mayúsculas de minúsculas. La comparten
+     * {@link #equals(Object)} y {@link #hashCode()} para que sean coherentes.
+     */
+    private static String clave(String campo) {
+        return campo.toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * Devuelve la dirección en forma legible, por ejemplo
+     * {@code Calle Mayor 12, Pamplona (Navarra)}.
+     *
+     * @return la calle, el número, la localidad y la provincia
+     */
     @Override
     public String toString() {
         return calle + " " + numero + ", " + localidad + " (" + provincia + ")";

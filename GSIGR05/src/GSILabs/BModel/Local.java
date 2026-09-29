@@ -269,6 +269,12 @@ public abstract class Local {
         return direccion.equals(otro.direccion);
     }
 
+    /**
+     * Devuelve el código hash del local, derivado de su {@link Direccion}
+     * para ser coherente con {@link #equals(Object)}.
+     *
+     * @return el código hash de la dirección del local
+     */
     @Override
     public final int hashCode() {
         return direccion.hashCode();
