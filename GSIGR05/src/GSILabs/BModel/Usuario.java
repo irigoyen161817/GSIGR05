@@ -49,9 +49,15 @@ public abstract class Usuario {
      */
     protected Usuario(String nick, String contrasena, LocalDate fechaNacimiento)
             throws DominioException {
-        Objects.requireNonNull(nick, "El nick es obligatorio.");
-        Objects.requireNonNull(contrasena, "La contraseña es obligatoria.");
-        Objects.requireNonNull(fechaNacimiento, "La fecha de nacimiento es obligatoria.");
+        if (nick == null) {
+            throw new NullPointerException("El nick es obligatorio.");
+        }
+        if (contrasena == null) {
+            throw new NullPointerException("La contraseña es obligatoria.");
+        }
+        if (fechaNacimiento == null) {
+            throw new NullPointerException("La fecha de nacimiento es obligatoria.");
+        }
         if (contrasena.isBlank()) {
             throw new IllegalArgumentException("La contraseña no puede estar vacía.");
         }
