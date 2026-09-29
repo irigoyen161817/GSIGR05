@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
  * {@link #equals(Object)} y {@link #hashCode()} no distingue mayúsculas
  * de minúsculas. No se eliminan tildes ni otros signos diacríticos.</p>
  */
-public final class Dirección {
+public final class Direccion {
 
     private static final Pattern ESPACIOS_MULTIPLES = Pattern.compile("\\s+");
 
@@ -44,7 +44,7 @@ public final class Dirección {
      * @throws NullPointerException si algún campo es {@code null}
      * @throws IllegalArgumentException si algún campo está en blanco
      */
-    public Dirección(String localidad, String provincia, String calle, String numero) {
+    public Direccion(String localidad, String provincia, String calle, String numero) {
         this.localidad = normalizar(localidad, "La localidad");
         this.provincia = normalizar(provincia, "La provincia");
         this.calle = normalizar(calle, "La calle");
@@ -100,7 +100,7 @@ public final class Dirección {
      * calle y número.
      *
      * @param obj objeto con el que comparar
-     * @return {@code true} si {@code obj} es una {@code Dirección} con los
+     * @return {@code true} si {@code obj} es una {@code Direccion} con los
      *         mismos cuatro campos
      */
     @Override
@@ -108,10 +108,10 @@ public final class Dirección {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof Dirección)) {
+        if (!(obj instanceof Direccion)) {
             return false;
         }
-        Dirección otra = (Dirección) obj;
+        Direccion otra = (Direccion) obj;
         return localidad.equalsIgnoreCase(otra.localidad)
                 && provincia.equalsIgnoreCase(otra.provincia)
                 && calle.equalsIgnoreCase(otra.calle)
