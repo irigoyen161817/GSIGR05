@@ -17,12 +17,12 @@ import java.util.Set;
  * <p>Un local debe tener entre {@value #MIN_DUENOS} y
  * {@value #MAX_DUENOS} dueños (C06). Esta clase es la responsable de
  * mantener esa cardinalidad, pero la sincronización con la colección de
- * locales de {@link Dueño} es explícita y no ocurre en el constructor.</p>
+ * locales de {@link Propietario} es explícita y no ocurre en el constructor.</p>
  *
  * <p><b>Ciclo de vida.</b> Un local se crea sin estar enlazado con sus
  * dueños: el constructor solo valida los datos y guarda el conjunto de
  * dueños del propio local, sin tocar la colección de locales de ningún
- * {@link Dueño} (evita que {@code this} escape del constructor antes de
+ * {@link Propietario} (evita que {@code this} escape del constructor antes de
  * terminar de construirse). Es responsabilidad de quien da de alta el
  * local, típicamente {@code GSILabs.BSystem.BusinessSystem} tras
  * comprobar que la dirección es única en el sistema, invocar
@@ -50,7 +50,7 @@ public abstract class Local {
     private final String nombre;
     private final Dirección direccion;
     private String descripcion;
-    private final Set<Dueño> dueños = new LinkedHashSet<>();
+    private final Set<Propietario> dueños = new LinkedHashSet<>();
     private boolean vinculado;
 
     /**
@@ -76,7 +76,7 @@ public abstract class Local {
      *         la descripción supera {@value #MAX_CARACTERES_DESCRIPCION}
      *         caracteres (C01)
      */
-    protected Local(String nombre, Dirección direccion, String descripcion, Dueño primerDueño)
+    protected Local(String nombre, Dirección direccion, String descripcion, Propietario primerDueño)
             throws DominioException {
         Objects.requireNonNull(nombre, "El nombre del local es obligatorio.");
         Objects.requireNonNull(direccion, "La dirección del local es obligatoria.");
@@ -149,7 +149,7 @@ public abstract class Local {
      *
      * @return vista de solo lectura de los dueños
      */
-    public Set<Dueño> getDueños() {
+    public Set<Propietario> getDueños() {
         return Collections.unmodifiableSet(dueños);
     }
 
@@ -166,7 +166,7 @@ public abstract class Local {
 
     /**
      * Enlaza este local con sus dueños: se añade a la colección de
-     * locales de cada uno de ellos (véase {@link Dueño#getLocales()}).
+     * locales de cada uno de ellos (véase {@link Propietario#getLocales()}).
      *
      * <p>Antes de modificar nada, comprueba que el local no esté ya
      * vinculado y que ninguno de sus dueños tenga ya, en su colección de
@@ -181,7 +181,7 @@ public abstract class Local {
         if (vinculado) {
             throw new IllegalStateException("El local \"" + nombre + "\" ya está vinculado a sus dueños.");
         }
-        for (Dueño dueño : dueños) {
+        for (Propietario dueño : dueños) {
             for (Local otro : dueño.getLocales()) {
                 if (otro != this && otro.equals(this)) {
                     throw new DominioException("No se puede dar de alta el local \"" + nombre
@@ -190,7 +190,7 @@ public abstract class Local {
                 }
             }
         }
-        for (Dueño dueño : dueños) {
+        for (Propietario dueño : dueños) {
             dueño.añadirLocalInterno(this);
         }
         vinculado = true;
@@ -199,7 +199,7 @@ public abstract class Local {
     /**
      * Desenlaza este local de sus dueños: se quita de la colección de
      * locales de cada uno de ellos. El local conserva su propio conjunto
-     * de dueños; solo se deshace la sincronización con {@link Dueño}.
+     * de dueños; solo se deshace la sincronización con {@link Propietario}.
      *
      * <p>Operación idempotente: si el local no estaba vinculado, no hace
      * nada.</p>
@@ -208,7 +208,7 @@ public abstract class Local {
         if (!vinculado) {
             return;
         }
-        for (Dueño dueño : dueños) {
+        for (Propietario dueño : dueños) {
             dueño.quitarLocalInterno(this);
         }
         vinculado = false;
@@ -224,7 +224,7 @@ public abstract class Local {
      * @throws DominioException si el local ya tiene {@value #MAX_DUENOS}
      *         dueños (C06)
      */
-    public void añadirDueño(Dueño dueño) throws DominioException {
+    public void añadirDueño(Propietario dueño) throws DominioException {
         Objects.requireNonNull(dueño, "El dueño es obligatorio.");
         if (dueños.contains(dueño)) {
             return;
@@ -248,7 +248,7 @@ public abstract class Local {
      * @throws DominioException si {@code dueño} es el único dueño del
      *         local, ya que un local no puede quedarse sin dueños (C06)
      */
-    public void quitarDueño(Dueño dueño) throws DominioException {
+    public void quitarDueño(Propietario dueño) throws DominioException {
         if (dueño == null || !dueños.contains(dueño)) {
             return;
         }
