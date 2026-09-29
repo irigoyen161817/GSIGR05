@@ -49,9 +49,15 @@ public abstract class Usuario {
      */
     protected Usuario(String nick, String contrasena, LocalDate fechaNacimiento)
             throws DominioException {
-        Objects.requireNonNull(nick, "El nick es obligatorio.");
-        Objects.requireNonNull(contrasena, "La contraseña es obligatoria.");
-        Objects.requireNonNull(fechaNacimiento, "La fecha de nacimiento es obligatoria.");
+        if (nick == null) {
+            throw new NullPointerException("El nick es obligatorio.");
+        }
+        if (contrasena == null) {
+            throw new NullPointerException("La contraseña es obligatoria.");
+        }
+        if (fechaNacimiento == null) {
+            throw new NullPointerException("La fecha de nacimiento es obligatoria.");
+        }
         if (contrasena.isBlank()) {
             throw new IllegalArgumentException("La contraseña no puede estar vacía.");
         }
@@ -95,6 +101,20 @@ public abstract class Usuario {
      */
     public LocalDate getFechaNacimiento() {
         return fechaNacimiento;
+    }
+
+    /**
+     * Devuelve una representación legible del usuario: su perfil seguido de
+     * su nick, por ejemplo {@code Cliente ana} o {@code Propietario luis}.
+     * Nunca incluye la contraseña. {@link Cliente} y {@link Propietario}
+     * redefinen este método con su propia representación; esta versión sirve
+     * de base para cualquier perfil que no lo haga.
+     *
+     * @return el perfil y el nick del usuario
+     */
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " " + nick;
     }
 
     /**
