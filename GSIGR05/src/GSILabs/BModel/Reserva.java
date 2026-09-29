@@ -81,9 +81,18 @@ public final class Reserva {
      */
     private Reserva(Integer descuentoPorcentaje, Cliente cliente, Reservable reservable,
             LocalDateTime fechaHora) {
-        this.cliente = Objects.requireNonNull(cliente, "La reserva debe tener un cliente.");
-        this.reservable = Objects.requireNonNull(reservable, "La reserva debe tener un local reservable.");
-        this.fechaHora = Objects.requireNonNull(fechaHora, "La reserva debe tener fecha y hora.");
+        if (cliente == null) {
+            throw new NullPointerException("La reserva debe tener un cliente.");
+        }
+        if (reservable == null) {
+            throw new NullPointerException("La reserva debe tener un local reservable.");
+        }
+        if (fechaHora == null) {
+            throw new NullPointerException("La reserva debe tener fecha y hora.");
+        }
+        this.cliente = cliente;
+        this.reservable = reservable;
+        this.fechaHora = fechaHora;
         this.descuentoPorcentaje = descuentoPorcentaje;
         this.id = CONTADOR.incrementAndGet();
     }
@@ -163,11 +172,22 @@ public final class Reserva {
         return id == otra.id;
     }
 
+    /**
+     * Calcula el código hash a partir del identificador de la reserva.
+     *
+     * @return el código hash, coherente con {@link #equals(Object)}
+     */
     @Override
     public int hashCode() {
         return Objects.hash(id);
     }
 
+    /**
+     * Devuelve una descripción legible con el identificador, el cliente,
+     * el local reservado, la fecha y hora y el descuento.
+     *
+     * @return la descripción de la reserva
+     */
     @Override
     public String toString() {
         return "Reserva{id=" + id + ", cliente=" + cliente.getNick() + ", reservable=" + reservable
