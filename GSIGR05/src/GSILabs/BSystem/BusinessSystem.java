@@ -175,56 +175,150 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #24
+     * <p>Las reglas del nick (al menos 3 caracteres) y de la edad (al menos
+     * 14 años) ya las garantiza el constructor de {@link Usuario}; aquí se
+     * comprueba que el nick no esté en uso (C03). Si lo está, devuelve
+     * {@code false} y el motivo queda en {@link #getUltimoError()}.</p>
+     *
+     * @throws NullPointerException si {@code u} es {@code null}
      */
     @Override
     public boolean nuevoUsuario(Usuario u) {
-        throw new UnsupportedOperationException("Pendiente: #24");
+        if (u == null) {
+            throw new NullPointerException("Hay que indicar el usuario que se quiere dar de alta.");
+        }
+        try {
+            comprobarNickLibre(u.getNick());
+        } catch (DominioException e) {
+            operacionRechazada(e);
+            return false;
+        }
+        usuarios.put(u.getNick(), u);
+        operacionCorrecta();
+        return true;
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #24
+     * <p>Devuelve {@code false} si no hay ningún usuario registrado con ese
+     * nick, y el motivo queda en {@link #getUltimoError()}.</p>
+     *
+     * @throws NullPointerException si {@code u} es {@code null}
      */
     @Override
     public boolean eliminaUsuario(Usuario u) {
-        throw new UnsupportedOperationException("Pendiente: #24");
+        if (u == null) {
+            throw new NullPointerException("Hay que indicar el usuario que se quiere eliminar.");
+        }
+        try {
+            usuarioRegistrado(u);
+        } catch (DominioException e) {
+            operacionRechazada(e);
+            return false;
+        }
+        usuarios.remove(u.getNick());
+        operacionCorrecta();
+        return true;
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #24
+     * <p>Devuelve {@code false}, con el motivo en {@link #getUltimoError()},
+     * si {@code u} no está registrado, si {@code nuevoU} tiene otro perfil
+     * (un {@link Cliente} solo se sustituye por otro {@code Cliente} y un
+     * {@link Propietario} por otro {@code Propietario}) o si {@code nuevoU}
+     * cambia a un nick que ya usa otro usuario.</p>
+     *
+     * @throws NullPointerException si {@code u} o {@code nuevoU} son
+     *                              {@code null}
      */
     @Override
     public boolean modificaUsuario(Usuario u, Usuario nuevoU) {
-        throw new UnsupportedOperationException("Pendiente: #24");
+        if (u == null) {
+            throw new NullPointerException("Hay que indicar el usuario que se quiere modificar.");
+        }
+        if (nuevoU == null) {
+            throw new NullPointerException("Hay que indicar los nuevos datos del usuario.");
+        }
+        try {
+            Usuario registrado = usuarioRegistrado(u);
+            if (registrado.getClass() != nuevoU.getClass()) {
+                throw new DominioException("No se puede cambiar el perfil del usuario \"" + u.getNick()
+                        + "\" de " + registrado.getClass().getSimpleName() + " a "
+                        + nuevoU.getClass().getSimpleName() + ".");
+            }
+            if (!registrado.equals(nuevoU)) {
+                comprobarNickLibre(nuevoU.getNick());
+            }
+        } catch (DominioException e) {
+            operacionRechazada(e);
+            return false;
+        }
+        usuarios.remove(u.getNick());
+        usuarios.put(nuevoU.getNick(), nuevoU);
+        operacionCorrecta();
+        return true;
     }
 
     /**
-     * Comprueba si existe algún usuario registrado con ese nick.
+     * Comprueba si existe algún usuario registrado con ese nick. Los
+     * espacios al principio y al final se ignoran, igual que al crear el
+     * {@link Usuario}.
      *
      * @param nick nick que se busca
      * @return {@code true} si existe un usuario con ese nick
-     * @throws UnsupportedOperationException pendiente de implementar en #24
+     * @throws NullPointerException si {@code nick} es {@code null}
      */
     @Override
     public boolean existeNick(String nick) {
-        throw new UnsupportedOperationException("Pendiente: #24");
+        return obtenerUsuario(nick) != null;
     }
 
     /**
-     * Recupera el usuario asociado a un nick, en caso de que exista.
+     * Recupera el usuario asociado a un nick, en caso de que exista. Los
+     * espacios al principio y al final se ignoran, igual que al crear el
+     * {@link Usuario}.
      *
      * @param nick nick del usuario que se busca
      * @return el usuario con ese nick, o {@code null} si
      *         {@link #existeNick(String)} es falso
-     * @throws UnsupportedOperationException pendiente de implementar en #24
+     * @throws NullPointerException si {@code nick} es {@code null}
      */
     @Override
     public Usuario obtenerUsuario(String nick) {
-        throw new UnsupportedOperationException("Pendiente: #24");
+        if (nick == null) {
+            throw new NullPointerException("Hay que indicar el nick del usuario que se busca.");
+        }
+        return usuarios.get(nick.strip());
+    }
+
+    /**
+     * Comprueba que ningún usuario registrado use ya el nick indicado (C03).
+     *
+     * @param nick nick que se quiere usar
+     * @throws DominioException si el nick ya pertenece a otro usuario
+     */
+    private void comprobarNickLibre(String nick) throws DominioException {
+        if (usuarios.containsKey(nick)) {
+            throw new DominioException("El nick \"" + nick + "\" ya está en uso por otro usuario.");
+        }
+    }
+
+    /**
+     * Devuelve el usuario registrado con el mismo nick que {@code u}.
+     *
+     * @param u usuario que se busca
+     * @return el usuario registrado con ese nick
+     * @throws DominioException si no hay ningún usuario registrado con ese nick
+     */
+    private Usuario usuarioRegistrado(Usuario u) throws DominioException {
+        Usuario registrado = usuarios.get(u.getNick());
+        if (registrado == null) {
+            throw new DominioException("El usuario \"" + u.getNick() + "\" no está registrado en el sistema.");
+        }
+        return registrado;
     }
 
     /**
