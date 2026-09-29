@@ -168,27 +168,11 @@ public abstract class Local {
      * Enlaza este local con sus dueños: se añade a la colección de
      * locales de cada uno de ellos (véase {@link Propietario#getLocales()}).
      *
-     * <p>Antes de modificar nada, comprueba que el local no esté ya
-     * vinculado y que ninguno de sus dueños tenga ya, en su colección de
-     * locales, otra instancia distinta con la misma dirección; si alguna
-     * comprobación falla no se modifica el estado de nadie.</p>
-     *
      * @throws IllegalStateException si el local ya estaba vinculado
-     * @throws DominioException si algún dueño ya tiene otro local (una
-     *         instancia distinta de esta) en la misma dirección (C01)
      */
-    public void vincular() throws DominioException {
+    public void vincular() {
         if (vinculado) {
             throw new IllegalStateException("El local \"" + nombre + "\" ya está vinculado a sus dueños.");
-        }
-        for (Propietario dueño : dueños) {
-            for (Local otro : dueño.getLocales()) {
-                if (otro != this && otro.equals(this)) {
-                    throw new DominioException("No se puede dar de alta el local \"" + nombre
-                            + "\" porque su dueño " + dueño.getNick() + " ya tiene el local \""
-                            + otro.getNombre() + "\" en la misma dirección (" + direccion + ").");
-                }
-            }
         }
         for (Propietario dueño : dueños) {
             dueño.añadirLocalInterno(this);
