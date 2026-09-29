@@ -106,7 +106,9 @@ public abstract class Usuario {
     /**
      * Devuelve una representación legible del usuario: su perfil seguido de
      * su nick, por ejemplo {@code Cliente ana} o {@code Propietario luis}.
-     * Nunca incluye la contraseña.
+     * Nunca incluye la contraseña. {@link Cliente} y {@link Propietario}
+     * redefinen este método con su propia representación; esta versión sirve
+     * de base para cualquier perfil que no lo haga.
      *
      * @return el perfil y el nick del usuario
      */
