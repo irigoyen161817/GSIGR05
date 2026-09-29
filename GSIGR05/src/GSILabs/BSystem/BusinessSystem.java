@@ -559,53 +559,179 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     }
 
     /**
+     * Indica si {@code r} es la review registrada en el sistema, con los
+     * mismos criterios que {@link #comprobarReviewRegistrada(Review)}.
+     *
+     * @param r review que se consulta
+     * @return {@code true} si {@code r} es la review registrada
+     */
+    private boolean esReviewRegistrada(Review r) {
+        return obtenerUsuario(r.getCliente().getNick()) == r.getCliente()
+                && esLocalRegistrado(r.getLocal())
+                && r.isVinculada() && reviews.contains(r);
+    }
+
+    /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #28
+     * <p>El comentario (no vacío y de 500 caracteres como máximo) y la fecha
+     * de creación (C08) ya los garantiza {@link Contestacion}; aquí se
+     * comprueba que {@code r} sea la review registrada en el sistema (S8),
+     * que el autor sea el {@link Propietario} registrado con ese nick y
+     * dueño del local de la review, y que la review no tenga ya una
+     * contestación (C07). Tras el alta, la contestación aparece en
+     * {@link Review#getContestacion()} y en
+     * {@link Propietario#getContestaciones()}.</p>
+     *
+     * <p>Devuelve {@code false}, con el motivo en {@link #getUltimoError()},
+     * si la review no está registrada, si el autor no está registrado o ya
+     * no es dueño del local, o si la review ya tiene contestación.</p>
+     *
+     * @throws NullPointerException     si {@code c} o {@code r} son
+     *                                  {@code null}
+     * @throws IllegalArgumentException si {@code c} no contesta a la review
+     *                                  {@code r}, sino a otro objeto
      */
     @Override
     public boolean nuevaContestacion(Contestacion c, Review r) {
-        throw new UnsupportedOperationException("Pendiente: #28");
+        if (c == null) {
+            throw new NullPointerException("Hay que indicar la contestación que se quiere publicar.");
+        }
+        if (r == null) {
+            throw new NullPointerException("Hay que indicar la review que se quiere contestar.");
+        }
+        if (c.getReview() != r) {
+            throw new IllegalArgumentException("La contestación de \"" + c.getAutor().getNick()
+                    + "\" responde a otra review, no a la de \"" + r.getCliente().getNick()
+                    + "\" sobre \"" + r.getLocal().getNombre() + "\" del " + r.getFechaVisita() + ".");
+        }
+        try {
+            comprobarReviewRegistrada(r);
+            comprobarPropietarioRegistrado(c.getAutor());
+            if (contestaciones.containsKey(r)) {
+                throw new DominioException("La review de \"" + r.getCliente().getNick() + "\" sobre \""
+                        + r.getLocal().getNombre() + "\" del " + r.getFechaVisita()
+                        + " ya tiene una contestación y solo se permite una.");
+            }
+            c.vincular();
+        } catch (DominioException e) {
+            operacionRechazada(e);
+            return false;
+        }
+        contestaciones.put(r, c);
+        operacionCorrecta();
+        return true;
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #28
+     * <p>Un {@code r} nulo o que no es la review registrada en el sistema se
+     * considera inexistente y el resultado es {@code false}.</p>
      */
     @Override
     public boolean tieneContestacion(Review r) {
-        throw new UnsupportedOperationException("Pendiente: #28");
+        return obtenerContestacion(r) != null;
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #28
+     * <p>Un {@code r} nulo o que no es la review registrada en el sistema se
+     * considera inexistente y el resultado es {@code null}.</p>
      */
     @Override
     public Contestacion obtenerContestacion(Review r) {
-        throw new UnsupportedOperationException("Pendiente: #28");
+        if (r == null || !esReviewRegistrada(r)) {
+            return null;
+        }
+        return contestaciones.get(r);
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #28
+     * <p>Solo se elimina la contestación registrada: otra contestación a la
+     * misma review que no se ha dado de alta se considera inexistente. Una
+     * contestación no tiene dependientes, así que la
+     * {@link #getPoliticaBorrado() política de borrado} no impide la baja.
+     * Tras la baja, la review queda sin contestación y puede volver a
+     * contestarse.</p>
+     *
+     * <p>Devuelve {@code false}, con el motivo en {@link #getUltimoError()},
+     * si la contestación no está registrada.</p>
+     *
+     * @throws NullPointerException si {@code c} es {@code null}
      */
     @Override
     public boolean eliminaContestacion(Contestacion c) {
-        throw new UnsupportedOperationException("Pendiente: #28");
+        if (c == null) {
+            throw new NullPointerException("Hay que indicar la contestación que se quiere eliminar.");
+        }
+        Review review = c.getReview();
+        try {
+            if (!esReviewRegistrada(review) || contestaciones.get(review) != c) {
+                throw new DominioException("La contestación de \"" + c.getAutor().getNick()
+                        + "\" a la review de \"" + review.getCliente().getNick() + "\" sobre \""
+                        + review.getLocal().getNombre() + "\" no está registrada en el sistema.");
+            }
+        } catch (DominioException e) {
+            operacionRechazada(e);
+            return false;
+        }
+        olvidar(c.eliminar(politicaBorrado));
+        operacionCorrecta();
+        return true;
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws UnsupportedOperationException pendiente de implementar en #28
+     * <p>Se comporta como {@link #eliminaContestacion(Contestacion)} con la
+     * contestación registrada de {@code r}.</p>
+     *
+     * <p>Devuelve {@code false}, con el motivo en {@link #getUltimoError()},
+     * si la review no está registrada o si no tiene contestación.</p>
+     *
+     * @throws NullPointerException si {@code r} es {@code null}
      */
     @Override
     public boolean eliminaContestacion(Review r) {
-        throw new UnsupportedOperationException("Pendiente: #28");
+        if (r == null) {
+            throw new NullPointerException("Hay que indicar la review cuya contestación se quiere eliminar.");
+        }
+        Contestacion contestacion;
+        try {
+            comprobarReviewRegistrada(r);
+            contestacion = contestaciones.get(r);
+            if (contestacion == null) {
+                throw new DominioException("La review de \"" + r.getCliente().getNick() + "\" sobre \""
+                        + r.getLocal().getNombre() + "\" del " + r.getFechaVisita()
+                        + " no tiene ninguna contestación que eliminar.");
+            }
+        } catch (DominioException e) {
+            operacionRechazada(e);
+            return false;
+        }
+        olvidar(contestacion.eliminar(politicaBorrado));
+        operacionCorrecta();
+        return true;
+    }
+
+    /**
+     * Comprueba que {@code p} sea el mismo objeto que está registrado como
+     * {@link Propietario} con su nick, para que lo que se enlace con él
+     * quede enlazado con el usuario del sistema.
+     *
+     * @param p propietario que se comprueba
+     * @throws DominioException si no está registrado, está registrado con
+     *         otro perfil o no es el objeto registrado
+     */
+    private void comprobarPropietarioRegistrado(Propietario p) throws DominioException {
+        if (usuarioRegistrado(p) != p) {
+            throw new DominioException("El propietario \"" + p.getNick()
+                    + "\" no es el propietario registrado en el sistema con ese nick.");
+        }
     }
 
     /**
