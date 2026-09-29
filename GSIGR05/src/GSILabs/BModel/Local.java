@@ -273,4 +273,9 @@ public abstract class Local {
     public final int hashCode() {
         return direccion.hashCode();
     }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "{nombre=" + nombre + ", direccion=" + direccion + "}";
+    }
 }
