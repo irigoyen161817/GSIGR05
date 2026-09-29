@@ -1,5 +1,8 @@
 package GSILabs.BModel;
 
+import java.math.BigDecimal;
+import java.util.Objects;
+
 /**
  * Local de tipo restaurante.
  *
@@ -11,7 +14,7 @@ package GSILabs.BModel;
  */
 public final class Restaurante extends Local implements Reservable {
 
-    private final double precioMenu;
+    private final BigDecimal precioMenu;
     private final int capacidadTotal;
     private final int capacidadMaximaPorMesa;
 
@@ -23,23 +26,24 @@ public final class Restaurante extends Local implements Reservable {
      * @param descripcion            descripción opcional (puede ser
      *                               {@code null})
      * @param primerDueño            dueño inicial del local
-     * @param precioMenu             precio estimado del menú, finito y
-     *                               mayor que 0
+     * @param precioMenu             precio estimado del menú, mayor que 0
      * @param capacidadTotal         número total de comensales, mayor que 0
      * @param capacidadMaximaPorMesa número máximo de comensales por mesa,
      *                               mayor que 0 y no superior a
      *                               {@code capacidadTotal}
+     * @throws NullPointerException si falta el precio del menú
      * @throws DominioException si el local incumple las reglas de
-     *         {@link Local}, si el precio del menú no es un número finito
-     *         mayor que 0, o si las capacidades no son positivas o la
-     *         capacidad por mesa supera la total (C02)
+     *         {@link Local}, si el precio del menú no es mayor que 0, o
+     *         si las capacidades no son positivas o la capacidad por mesa
+     *         supera la total (C02)
      */
     public Restaurante(String nombre, Direccion direccion, String descripcion, Propietario primerDueño,
-            double precioMenu, int capacidadTotal, int capacidadMaximaPorMesa)
+            BigDecimal precioMenu, int capacidadTotal, int capacidadMaximaPorMesa)
             throws DominioException {
         super(nombre, direccion, descripcion, primerDueño);
 
-        if (!Double.isFinite(precioMenu) || precioMenu <= 0) {
+        Objects.requireNonNull(precioMenu, "El precio del menú es obligatorio.");
+        if (precioMenu.signum() <= 0) {
             throw new DominioException("El precio del menú del restaurante \"" + nombre
                     + "\" debe ser mayor que 0 y se ha indicado " + precioMenu + ".");
         }
@@ -63,7 +67,7 @@ public final class Restaurante extends Local implements Reservable {
      *
      * @return el precio del menú
      */
-    public double getPrecioMenu() {
+    public BigDecimal getPrecioMenu() {
         return precioMenu;
     }
 
