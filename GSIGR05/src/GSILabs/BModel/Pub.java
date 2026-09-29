@@ -1,7 +1,6 @@
 package GSILabs.BModel;
 
 import java.time.LocalTime;
-import java.util.Objects;
 
 /**
  * Local de tipo pub.
@@ -30,7 +29,9 @@ public final class Pub extends Local {
      * @param primerDueño  dueño inicial del local
      * @param horaApertura hora de apertura
      * @param horaClausura hora de clausura
-     * @throws NullPointerException si falta alguna de las horas
+     * @throws NullPointerException si el nombre, la dirección o alguna de
+     *         las horas son {@code null}
+     * @throws IllegalArgumentException si el nombre está en blanco
      * @throws DominioException si el local incumple las reglas de
      *         {@link Local} (sin dueño o descripción demasiado larga)
      */
@@ -38,8 +39,14 @@ public final class Pub extends Local {
             LocalTime horaApertura, LocalTime horaClausura)
             throws DominioException {
         super(nombre, direccion, descripcion, primerDueño);
-        this.horaApertura = Objects.requireNonNull(horaApertura, "La hora de apertura es obligatoria.");
-        this.horaClausura = Objects.requireNonNull(horaClausura, "La hora de clausura es obligatoria.");
+        if (horaApertura == null) {
+            throw new NullPointerException("La hora de apertura es obligatoria.");
+        }
+        if (horaClausura == null) {
+            throw new NullPointerException("La hora de clausura es obligatoria.");
+        }
+        this.horaApertura = horaApertura;
+        this.horaClausura = horaClausura;
     }
 
     /**

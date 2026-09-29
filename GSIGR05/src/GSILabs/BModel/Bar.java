@@ -3,7 +3,6 @@ package GSILabs.BModel;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -26,6 +25,9 @@ public final class Bar extends Local implements Reservable {
      * @param direccion   dirección física del local
      * @param descripcion descripción opcional (puede ser {@code null})
      * @param primerDueño dueño inicial del local
+     * @throws NullPointerException si el nombre o la dirección son
+     *         {@code null}
+     * @throws IllegalArgumentException si el nombre está en blanco
      * @throws DominioException si el local incumple las reglas de
      *         {@link Local} (sin dueño o descripción demasiado larga)
      */
@@ -52,7 +54,9 @@ public final class Bar extends Local implements Reservable {
      * @throws IllegalArgumentException si la especialidad está en blanco
      */
     public void añadirEspecialidad(String especialidad) {
-        Objects.requireNonNull(especialidad, "La especialidad es obligatoria.");
+        if (especialidad == null) {
+            throw new NullPointerException("La especialidad es obligatoria.");
+        }
         if (especialidad.isBlank()) {
             throw new IllegalArgumentException("La especialidad no puede estar en blanco.");
         }
