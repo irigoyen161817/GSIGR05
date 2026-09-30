@@ -51,7 +51,6 @@ public final class Reserva {
     /** Porcentaje de descuento máximo admitido. */
     public static final int DESCUENTO_MAXIMO = 100;
 
-    /** Contador con el que se genera el identificador de cada reserva. */
     private static final AtomicInteger CONTADOR = new AtomicInteger();
 
     private final int id;
@@ -93,10 +92,6 @@ public final class Reserva {
         this(validarDescuento(descuentoPorcentaje), cliente, reservable, fechaHora);
     }
 
-    /**
-     * Constructor común a los dos públicos: recibe el descuento ya
-     * validado.
-     */
     private Reserva(Integer descuentoPorcentaje, Cliente cliente, Reservable reservable,
             LocalDateTime fechaHora) {
         if (cliente == null) {

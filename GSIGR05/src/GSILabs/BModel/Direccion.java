@@ -61,10 +61,6 @@ public final class Direccion {
         return compactar(valor);
     }
 
-    /**
-     * Elimina los espacios en blanco de los extremos y colapsa las
-     * secuencias de varios espacios internos en uno solo.
-     */
     private static String compactar(String valor) {
         return ESPACIOS_MULTIPLES.matcher(valor.strip()).replaceAll(" ");
     }
@@ -181,11 +177,6 @@ public final class Direccion {
         return Objects.hash(clave(localidad), clave(provincia), clave(calle), clave(numero));
     }
 
-    /**
-     * Forma de un campo que se usa para comparar: en minúsculas, sin
-     * distinguir mayúsculas de minúsculas. La comparten
-     * {@link #equals(Object)} y {@link #hashCode()} para que sean coherentes.
-     */
     private static String clave(String campo) {
         return campo.toLowerCase(Locale.ROOT);
     }
