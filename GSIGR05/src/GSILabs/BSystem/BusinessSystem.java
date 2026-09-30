@@ -106,25 +106,18 @@ import java.util.function.IntFunction;
  */
 public class BusinessSystem implements LeisureOffice, LookupService {
 
-    /** Usuarios registrados, indexados por su nick (clave natural, C03). */
     private final Map<String, Usuario> usuarios = new LinkedHashMap<>();
 
-    /** Locales registrados, indexados por su dirección (clave natural, C01). */
     private final Map<Direccion, Local> locales = new LinkedHashMap<>();
 
-    /** Reviews registradas; su identidad es cliente, local y fecha de visita (C05). */
     private final Set<Review> reviews = new LinkedHashSet<>();
 
-    /** Contestaciones registradas, indexadas por la review que contestan (C07). */
     private final Map<Review, Contestacion> contestaciones = new LinkedHashMap<>();
 
-    /** Reservas registradas; su identidad es el id que genera {@link Reserva}. */
     private final Set<Reserva> reservas = new LinkedHashSet<>();
 
-    /** Política aplicada en las bajas de entidades con dependientes. */
     private PoliticaBorrado politicaBorrado;
 
-    /** Motivo del último rechazo, o {@code null} si la última operación tuvo éxito. */
     private String ultimoError;
 
     /**
@@ -181,18 +174,10 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         return ultimoError;
     }
 
-    /**
-     * Marca la operación en curso como correcta, borrando el último error.
-     */
     private void operacionCorrecta() {
         ultimoError = null;
     }
 
-    /**
-     * Marca la operación en curso como rechazada, guardando el motivo.
-     *
-     * @param e excepción con el motivo del rechazo en lenguaje natural
-     */
     private void operacionRechazada(DominioException e) {
         ultimoError = e.getMessage();
     }
@@ -358,12 +343,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         return usuarios.get(nick.strip());
     }
 
-    /**
-     * Comprueba que ningún usuario registrado use ya el nick indicado (C03).
-     *
-     * @param nick nick que se quiere usar
-     * @throws DominioException si ya hay un usuario registrado con ese nick
-     */
     private void comprobarNickLibre(String nick) throws DominioException {
         if (existeNick(nick)) {
             throw new DominioException("Ya hay un usuario registrado con el nick \"" + nick
@@ -371,15 +350,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         }
     }
 
-    /**
-     * Devuelve el usuario registrado con el mismo nick y el mismo perfil
-     * que {@code u}.
-     *
-     * @param u usuario que se busca
-     * @return el usuario registrado con ese nick
-     * @throws DominioException si no hay ningún usuario registrado con ese
-     *         nick o si está registrado con otro perfil
-     */
     private Usuario usuarioRegistrado(Usuario u) throws DominioException {
         Usuario registrado = obtenerUsuario(u.getNick());
         if (registrado == null) {
@@ -393,13 +363,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         return registrado;
     }
 
-    /**
-     * Quita de las colecciones del sistema las entidades que ha eliminado el
-     * modelo al aplicar la política de borrado.
-     *
-     * @param eliminados entidades devueltas por un
-     *                   {@code eliminar(PoliticaBorrado)} del modelo
-     */
     private void olvidar(Set<Object> eliminados) {
         for (Object eliminado : eliminados) {
             if (eliminado instanceof Usuario usuario) {
@@ -525,15 +488,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         return l.getReviews().toArray(new Review[0]);
     }
 
-    /**
-     * Comprueba que {@code c} sea el mismo objeto que está registrado como
-     * {@link Cliente} con su nick, para que lo que se enlace con él quede
-     * enlazado con el usuario del sistema.
-     *
-     * @param c cliente que se comprueba
-     * @throws DominioException si no está registrado, está registrado con
-     *         otro perfil o no es el objeto registrado
-     */
     private void comprobarClienteRegistrado(Cliente c) throws DominioException {
         if (usuarioRegistrado(c) != c) {
             throw new DominioException("El cliente \"" + c.getNick()
@@ -541,24 +495,10 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         }
     }
 
-    /**
-     * Indica si {@code c} es el mismo objeto que está registrado con su
-     * nick.
-     *
-     * @param c cliente que se consulta
-     * @return {@code true} si {@code c} es el cliente registrado con su nick
-     */
     private boolean esClienteRegistrado(Cliente c) {
         return obtenerUsuario(c.getNick()) == c;
     }
 
-    /**
-     * Comprueba que el autor de la review no haya valorado ya la misma
-     * visita, es decir, el mismo local con la misma fecha de visita (C05).
-     *
-     * @param r review que se quiere publicar
-     * @throws DominioException si ya hay una review de esa visita
-     */
     private void comprobarVisitaSinValorar(Review r) throws DominioException {
         Cliente cliente = r.getCliente();
         Local local = r.getLocal();
@@ -570,16 +510,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         }
     }
 
-    /**
-     * Comprueba que {@code r} sea la review registrada en el sistema: otra
-     * review de la misma visita que no se ha dado de alta se considera
-     * inexistente.
-     *
-     * @param r review que se busca
-     * @throws DominioException si su autor no es el cliente registrado, su
-     *         local no es el registrado en su dirección o {@code r} no es la
-     *         review registrada
-     */
     private void comprobarReviewRegistrada(Review r) throws DominioException {
         comprobarClienteRegistrado(r.getCliente());
         comprobarLocalRegistrado(r.getLocal());
@@ -590,13 +520,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         }
     }
 
-    /**
-     * Indica si {@code r} es la review registrada en el sistema, con los
-     * mismos criterios que {@link #comprobarReviewRegistrada(Review)}.
-     *
-     * @param r review que se consulta
-     * @return {@code true} si {@code r} es la review registrada
-     */
     private boolean esReviewRegistrada(Review r) {
         return esClienteRegistrado(r.getCliente())
                 && esLocalRegistrado(r.getLocal())
@@ -750,15 +673,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         return true;
     }
 
-    /**
-     * Comprueba que {@code p} sea el mismo objeto que está registrado como
-     * {@link Propietario} con su nick, para que lo que se enlace con él
-     * quede enlazado con el usuario del sistema.
-     *
-     * @param p propietario que se comprueba
-     * @throws DominioException si no está registrado, está registrado con
-     *         otro perfil o no es el objeto registrado
-     */
     private void comprobarPropietarioRegistrado(Propietario p) throws DominioException {
         if (usuarioRegistrado(p) != p) {
             throw new DominioException("El propietario \"" + p.getNick()
@@ -1025,13 +939,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         return true;
     }
 
-    /**
-     * Comprueba que ningún local registrado ocupe ya la dirección del local
-     * indicado (C01).
-     *
-     * @param l local que se quiere registrar
-     * @throws DominioException si ya hay un local registrado en esa dirección
-     */
     private void comprobarDireccionLibre(Local l) throws DominioException {
         Direccion direccion = l.getDireccion();
         Local ocupante = locales.get(direccion);
@@ -1042,14 +949,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         }
     }
 
-    /**
-     * Comprueba que {@code l} sea el mismo objeto que está registrado en su
-     * dirección: otro local en la misma dirección se considera inexistente.
-     *
-     * @param l local que se busca
-     * @throws DominioException si {@code l} no es el local registrado en su
-     *         dirección
-     */
     private void comprobarLocalRegistrado(Local l) throws DominioException {
         Direccion direccion = l.getDireccion();
         Local registrado = locales.get(direccion);
@@ -1062,28 +961,10 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         }
     }
 
-    /**
-     * Indica si {@code l} es el mismo objeto que está registrado en su
-     * dirección.
-     *
-     * @param l local que se consulta
-     * @return {@code true} si {@code l} es el local registrado en su
-     *         dirección
-     */
     private boolean esLocalRegistrado(Local l) {
         return obtenerLocal(l.getDireccion()) == l;
     }
 
-    /**
-     * Comprueba que todos los dueños del local sean los propietarios
-     * registrados en el sistema con su nick, y no otros objetos con el mismo
-     * nick, para que el local quede enlazado con los usuarios del sistema
-     * (C06).
-     *
-     * @param l local cuyos dueños se comprueban
-     * @throws DominioException si algún dueño no está registrado, está
-     *         registrado con otro perfil o no es el objeto registrado
-     */
     private void comprobarDueñosRegistrados(Local l) throws DominioException {
         for (Propietario dueño : l.getDueños()) {
             if (usuarioRegistrado(dueño) != dueño) {
@@ -1093,17 +974,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         }
     }
 
-    /**
-     * Deja a {@code destino} con exactamente los mismos dueños que
-     * {@code origen}. Si {@code destino} ya tiene el máximo de dueños, se
-     * quita uno que no esté en {@code origen} antes de añadir el siguiente,
-     * de modo que nunca se supera el máximo ni se queda sin dueños.
-     *
-     * @param origen  local cuyos dueños se traspasan
-     * @param destino local sin vincular que recibe los dueños
-     * @throws DominioException no se produce, porque el orden de las
-     *         operaciones respeta los límites de dueños de {@link Local}
-     */
     private static void traspasarDueños(Local origen, Local destino) throws DominioException {
         for (Propietario dueño : origen.getDueños()) {
             if (!destino.getDueños().contains(dueño)) {
@@ -1120,15 +990,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         }
     }
 
-    /**
-     * Devuelve un dueño de {@code destino} que no lo es de {@code origen}.
-     *
-     * @param origen  local de referencia
-     * @param destino local en el que se busca el dueño
-     * @return un dueño de {@code destino} que no está en {@code origen}
-     * @throws NoSuchElementException si todos los dueños de {@code destino}
-     *         lo son también de {@code origen}
-     */
     private static Propietario dueñoAjeno(Local origen, Local destino) {
         for (Propietario dueño : destino.getDueños()) {
             if (!origen.getDueños().contains(dueño)) {
@@ -1281,14 +1142,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         return true;
     }
 
-    /**
-     * Comprueba que la fecha y hora de una reserva sean posteriores al
-     * momento actual.
-     *
-     * @param local     local que se quiere reservar
-     * @param fechaHora fecha y hora de la reserva
-     * @throws DominioException si la fecha y hora no son futuras
-     */
     private static void comprobarFechaFutura(Local local, LocalDateTime fechaHora) throws DominioException {
         if (!fechaHora.isAfter(LocalDateTime.now())) {
             throw new DominioException("No se puede reservar en \"" + local.getNombre() + "\" para el "
@@ -1297,16 +1150,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         }
     }
 
-    /**
-     * Comprueba que el cliente no tenga ya una reserva en el local el día
-     * indicado.
-     *
-     * @param c     cliente que hace la reserva
-     * @param local local que se quiere reservar
-     * @param dia   día de la reserva
-     * @throws DominioException si el cliente ya tiene una reserva en ese
-     *         local ese día
-     */
     private static void comprobarDiaSinReserva(Cliente c, Local local, LocalDate dia) throws DominioException {
         for (Reserva reserva : c.getReservas()) {
             if (reserva.getReservable() == local && esDelDia(reserva, dia)) {
@@ -1317,25 +1160,10 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         }
     }
 
-    /**
-     * Indica si la reserva es para el día indicado, sea cual sea su hora.
-     *
-     * @param reserva reserva que se consulta
-     * @param dia     día que se busca
-     * @return {@code true} si la reserva es para ese día
-     */
     private static boolean esDelDia(Reserva reserva, LocalDate dia) {
         return reserva.getFechaHora().toLocalDate().equals(dia);
     }
 
-    /**
-     * Comprueba que {@code r} sea una reserva registrada en el sistema. Como
-     * cada reserva tiene un identificador único, generado al crearla, solo
-     * la propia reserva registrada lo cumple.
-     *
-     * @param r reserva que se busca
-     * @throws DominioException si {@code r} no está registrada
-     */
     private void comprobarReservaRegistrada(Reserva r) throws DominioException {
         if (!reservas.contains(r)) {
             throw new DominioException("La reserva " + r.getId() + " de \"" + r.getCliente().getNick()
@@ -1416,19 +1244,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         return listar(Pub.class, ciudad, provincia, Pub[]::new);
     }
 
-    /**
-     * Devuelve los locales registrados de un tipo concreto que están en la
-     * localidad y provincia indicadas, en orden de alta.
-     *
-     * @param <T>       tipo de local que se busca
-     * @param tipo      clase del tipo de local que se busca
-     * @param ciudad    localidad de interés
-     * @param provincia provincia en la que se encuentra la localidad
-     * @param nuevoArray crea el array resultado a partir de su longitud
-     * @return los locales encontrados, potencialmente de longitud 0
-     * @throws NullPointerException si {@code ciudad} o {@code provincia} son
-     *                              {@code null}
-     */
     private <T extends Local> T[] listar(Class<T> tipo, String ciudad, String provincia,
             IntFunction<T[]> nuevoArray) {
         if (ciudad == null) {
@@ -1628,12 +1443,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         return ordenarPorValoracion(listarPubs(ciudad, provincia));
     }
 
-    /**
-     * Calcula la media aritmética de las estrellas de unas reviews.
-     *
-     * @param reviews reviews que se promedian
-     * @return la valoración media, o 0 si no hay ninguna review
-     */
     private static float media(Collection<Review> reviews) {
         if (reviews.isEmpty()) {
             return 0;
@@ -1645,15 +1454,6 @@ public class BusinessSystem implements LeisureOffice, LookupService {
         return (float) estrellas / reviews.size();
     }
 
-    /**
-     * Ordena unos locales por su valoración media, de mayor a menor. La
-     * ordenación es estable, así que los locales empatados conservan el
-     * orden que tenían en el array, que es el de alta.
-     *
-     * @param <T>     tipo de local
-     * @param locales locales que se ordenan; el array se modifica
-     * @return el mismo array, ya ordenado
-     */
     private static <T extends Local> T[] ordenarPorValoracion(T[] locales) {
         Map<Local, Float> medias = new HashMap<>();
         for (Local local : locales) {
