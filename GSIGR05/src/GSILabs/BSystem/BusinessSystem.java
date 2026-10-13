@@ -14,6 +14,8 @@ import GSILabs.BModel.Reservable;
 import GSILabs.BModel.Restaurante;
 import GSILabs.BModel.Review;
 import GSILabs.BModel.Usuario;
+import java.io.File;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -30,6 +32,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.function.IntFunction;
+import org.jopendocument.dom.spreadsheet.Sheet;
+import org.jopendocument.dom.spreadsheet.SpreadSheet;
 
 /**
  * Sistema de gestión del portal de ocio: almacena en memoria (sin
@@ -119,6 +123,10 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     private PoliticaBorrado politicaBorrado;
 
     private String ultimoError;
+
+    private static final String CONTRASENA_IMPORTACION = "importado";
+
+    private static final LocalDate FECHA_NACIMIENTO_IMPORTACION = LocalDate.of(1970, 1, 1);
 
     /**
      * Crea un sistema vacío que bloquea las bajas de entidades con
@@ -1441,6 +1449,118 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     @Override
     public Pub[] obtenerPubOrdenados(String ciudad, String provincia) {
         return ordenarPorValoracion(listarPubs(ciudad, provincia));
+    }
+
+    /**
+     * Da de alta los bares de una hoja de cálculo ODS y devuelve cuántos se
+     * han incorporado con éxito.
+     *
+     * <p><b>Formato del fichero.</b> Se lee la primera hoja, con un bar por
+     * fila a partir de la primera y sin fila de cabecera. La lectura termina
+     * en la primera fila cuya columna A está vacía. Cada fila se interpreta
+     * así:</p>
+     * <ul>
+     *   <li>A: nombre del bar.</li>
+     *   <li>B: calle y número, separados por el último espacio de la celda
+     *       ({@code "Travesia Cervantes 174"} da la calle
+     *       {@code "Travesia Cervantes"} y el número {@code "174"}).</li>
+     *   <li>C: localidad.</li>
+     *   <li>D: provincia.</li>
+     *   <li>E: nombre del dueño, que se usa como nick.</li>
+     *   <li>F en adelante: especialidades, una por celda, hasta la primera
+     *       celda vacía.</li>
+     * </ul>
+     *
+     * <p><b>Dueños.</b> El fichero solo da el nombre del dueño, pero un
+     * {@link Propietario} necesita además contraseña y fecha de nacimiento.
+     * Si ya hay un propietario registrado con ese nick, el bar se le asocia.
+     * Si no, se da de alta un propietario nuevo con la contraseña
+     * {@code "importado"} y nacido el 1 de enero de 1970, que
+     * cumple la edad mínima. El propietario nuevo solo se registra si su bar
+     * se da de alta.</p>
+     *
+     * <p><b>Bares descartados.</b> Un bar que incumple una regla de negocio
+     * (por ejemplo, porque ya hay otro local en su dirección, o porque el
+     * nick del dueño pertenece a un cliente) o cuya fila está mal formada se
+     * descarta y la importación sigue con el siguiente. Solo cuentan los
+     * bares dados de alta con éxito. Al terminar, {@link #getUltimoError()}
+     * explica por qué se descartó el último bar rechazado, indicando su fila,
+     * o es {@code null} si no se descartó ninguno.</p>
+     *
+     * @param f fichero ODS existente con los bares
+     * @return el número de bares incorporados con éxito al sistema
+     * @throws NullPointerException     si {@code f} es {@code null}
+     * @throws IllegalArgumentException si {@code f} no es un fichero
+     *                                  existente o no se puede leer como
+     *                                  hoja de cálculo ODS
+     */
+    public int importaBares(File f) {
+        if (f == null) {
+            throw new NullPointerException("Hay que indicar el fichero con los bares que se quieren importar.");
+        }
+        if (!f.isFile()) {
+            throw new IllegalArgumentException("No se pueden importar bares de " + f.getAbsolutePath()
+                    + " porque ese fichero no existe.");
+        }
+        Sheet hoja;
+        try {
+            hoja = SpreadSheet.createFromFile(f).getSheet(0);
+        } catch (IOException | RuntimeException e) {
+            throw new IllegalArgumentException("No se pueden importar bares de " + f.getAbsolutePath()
+                    + " porque no se puede leer como hoja de cálculo ODS.", e);
+        }
+        int importados = 0;
+        String ultimoRechazo = null;
+        for (int fila = 0; fila < hoja.getRowCount() && !celda(hoja, 0, fila).isEmpty(); fila++) {
+            try {
+                importarBar(hoja, fila);
+                importados++;
+            } catch (DominioException | IllegalArgumentException e) {
+                ultimoRechazo = "El bar de la fila " + (fila + 1) + " no se ha importado. " + e.getMessage();
+            }
+        }
+        ultimoError = ultimoRechazo;
+        return importados;
+    }
+
+    private void importarBar(Sheet hoja, int fila) throws DominioException {
+        String nombre = celda(hoja, 0, fila);
+        String calleYNumero = celda(hoja, 1, fila);
+        int espacio = calleYNumero.lastIndexOf(' ');
+        if (espacio < 0) {
+            throw new IllegalArgumentException("La dirección \"" + calleYNumero
+                    + "\" no tiene la calle y el número separados por un espacio.");
+        }
+        Direccion direccion = new Direccion(celda(hoja, 2, fila), celda(hoja, 3, fila),
+                calleYNumero.substring(0, espacio).strip(), calleYNumero.substring(espacio + 1).strip());
+
+        String nick = celda(hoja, 4, fila);
+        Usuario registrado = obtenerUsuario(nick);
+        if (registrado != null && !(registrado instanceof Propietario)) {
+            throw new DominioException("El dueño del bar \"" + nombre + "\" sería \"" + nick
+                    + "\", pero ese nick ya lo usa un " + registrado.getClass().getSimpleName()
+                    + " y solo un propietario puede ser dueño de un local.");
+        }
+        Propietario dueño = registrado != null
+                ? (Propietario) registrado
+                : new Propietario(nick, CONTRASENA_IMPORTACION, FECHA_NACIMIENTO_IMPORTACION);
+
+        Bar bar = new Bar(nombre, direccion, null, dueño);
+        for (int columna = 5; columna < hoja.getColumnCount() && !celda(hoja, columna, fila).isEmpty();
+                columna++) {
+            bar.añadirEspecialidad(celda(hoja, columna, fila));
+        }
+        comprobarDireccionLibre(bar);
+        if (registrado == null && !nuevoUsuario(dueño)) {
+            throw new DominioException(ultimoError);
+        }
+        if (!nuevoLocal(bar)) {
+            throw new DominioException(ultimoError);
+        }
+    }
+
+    private static String celda(Sheet hoja, int columna, int fila) {
+        return hoja.getImmutableCellAt(columna, fila).getTextValue().strip();
     }
 
     private static float media(Collection<Review> reviews) {
