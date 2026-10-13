@@ -2,6 +2,7 @@ package GSILabs.Misc;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import org.jopendocument.dom.spreadsheet.Sheet;
 import org.jopendocument.dom.spreadsheet.SpreadSheet;
 
@@ -23,9 +24,15 @@ public final class SSTest03 {
      * Lee {@code test02.ods} del directorio de trabajo y muestra la matriz,
      * una fila por línea. Si el fichero no existe, avisa de que hay que
      * ejecutar antes {@link SSTest02} y termina con código 1.
+     * <p>
+     * La hoja de cálculo guarda todos los números como decimales, así que cada
+     * celda se lee como {@link BigDecimal} y se convierte a entero exigiendo
+     * que no tenga parte decimal.
      *
      * @param args no se usan
      * @throws IOException si no se puede leer el fichero
+     * @throws ArithmeticException si alguna celda de la matriz tiene parte
+     *         decimal o no cabe en un {@code int}
      */
     public static void main(String[] args) throws IOException {
         int filas = 4;
@@ -46,8 +53,8 @@ public final class SSTest03 {
             for (int columna = 0; columna < columnas; columna++) {
                 int filaHoja = filasVacias + fila;
                 int columnaHoja = columnasVacias + columna;
-                Number valor = (Number) hoja.getValueAt(columnaHoja, filaHoja);
-                matriz[fila][columna] = valor.intValue();
+                BigDecimal valor = (BigDecimal) hoja.getValueAt(columnaHoja, filaHoja);
+                matriz[fila][columna] = valor.intValueExact();
             }
         }
 
