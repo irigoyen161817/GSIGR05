@@ -769,6 +769,22 @@ public class BusinessSystem implements LeisureOffice, LookupService {
     }
 
     /**
+     * Devuelve todos los locales registrados, sea cual sea su tipo y su
+     * localidad, en el orden en que se dieron de alta.
+     * <p>
+     * No forma parte de {@link LeisureOffice} ni de {@link LookupService},
+     * cuyas consultas de locales exigen siempre una localidad o una
+     * provincia. Sirve para recorrer el sistema completo, por ejemplo al
+     * exportarlo a una hoja de cálculo.
+     *
+     * @return los locales registrados, nunca {@code null} y potencialmente
+     *         de longitud 0; modificar el array no afecta al sistema
+     */
+    public Local[] obtenerLocales() {
+        return locales.values().toArray(new Local[0]);
+    }
+
+    /**
      * {@inheritDoc}
      *
      * <p>El local debe ser el objeto registrado y el propietario debe estar
