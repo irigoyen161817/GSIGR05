@@ -102,7 +102,7 @@ Antes de cerrar cualquier tarea, revisar el cambio contra esta tabla.
 - **Prohibidos los comentarios narrativos que no sean Javadoc** (`//` o `/* */`): nada de separadores de sección, referencias a issues (`#N`), notas de tareas pendientes ni explicaciones de lo que hace el código. Lo que haya que explicar va en el Javadoc de la clase o del método. Única excepción: los comentarios del `Tester` que explican cómo se comprueba cada suceso S1–S10, que exige el guion. Las cabeceras de `LeisureOffice` y `LookupService` se mantienen porque se copian sin alterar.
 - Separación estricta de capas: el modelo no conoce `BusinessSystem`; el Tester solo usa la API del sistema.
 - Invariantes intrínsecas (longitudes, rangos, edad) en el modelo; invariantes de conjunto (unicidad, cardinalidades, existencia) en `BusinessSystem`.
-- Solo biblioteca estándar de Java; sin dependencias externas.
+- Biblioteca estándar de Java y jOpenDocument 1.3 (`GSIGR05/lib/`, referenciada con ruta relativa) para las hojas de cálculo; ninguna otra dependencia externa.
 - Fechas con `java.time` (`LocalDate`, `LocalTime`, `LocalDateTime`).
 
 ### 6.1 Excepciones
