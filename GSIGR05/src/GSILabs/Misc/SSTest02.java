@@ -44,9 +44,12 @@ public final class SSTest02 {
         for (int fila = 0; fila < filas; fila++) {
             for (int columna = 0; columna < columnas; columna++) {
                 int valor = matriz[fila][columna];
-                MutableCell<SpreadSheet> celda = hoja.getCellAt(columnasVacias + columna, filasVacias + fila);
+                int filaHoja = filasVacias + fila;
+                int columnaHoja = columnasVacias + columna;
+                Color fondo = valor >= 10 ? Color.CYAN : Color.RED;
+                MutableCell<SpreadSheet> celda = hoja.getCellAt(columnaHoja, filaHoja);
                 celda.setValue(valor);
-                celda.setBackgroundColor(valor >= 10 ? Color.CYAN : Color.RED);
+                celda.setBackgroundColor(fondo);
             }
         }
 
