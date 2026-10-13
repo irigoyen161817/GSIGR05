@@ -27,6 +27,10 @@ requiere git ant java
 RAIZ=$(git -C "$RUTA" rev-parse --show-toplevel 2>/dev/null) \
   || error_entorno "\"$RUTA\" no es un repositorio git."
 cd "$RAIZ"
+if command -v flock >/dev/null 2>&1; then
+  exec 9>"$(git rev-parse --absolute-git-dir)/verify.lock"
+  flock 9
+fi
 git fetch origin "$BASE" --quiet \
   || error_entorno "No se ha podido descargar origin/$BASE; comprueba la conexión y el nombre de la rama."
 
